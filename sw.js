@@ -1,11 +1,13 @@
-const CACHE_NAME = "_myTodoHUB-v6";
+const CACHE_NAME = "_myTodoHUB-v7";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./css/style.css",
   "./js/app.js",
   "./manifest.json",
-  "./icons/icon.svg"
+  "./icons/icon.svg",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
 // Pre-cache the app shell so the starter remains available offline.

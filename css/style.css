@@ -278,6 +278,7 @@ button { font: inherit; cursor: pointer; }
 
 .todo-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
@@ -509,6 +510,9 @@ button { font: inherit; cursor: pointer; }
 
 .backup-controls {
   display: flex;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+  justify-content: flex-end;
   gap: var(--space-sm);
   margin-top: var(--space-md);
 }
