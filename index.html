@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f1e8">
+  <script>
+    (function() {
+      var stored = localStorage.getItem("_myTodoHUB.theme");
+      var theme = stored || "system";
+      var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var effective = theme === "system" ? (dark ? "dark" : "light") : theme;
+      document.documentElement.setAttribute("data-theme", effective);
+    })();
+  </script>
+  <meta name="description" content="A calm, focused space for the things you want to get done.">
+  <title>_myTodoHUB</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="_myTodoHUB home">
+      <span class="brand-mark" aria-hidden="true">+</span>
+      <span>_myTodoHUB</span>
+    </a>
+    <div class="header-controls">
+      <label class="theme-control" for="theme-selector">Theme</label>
+      <select id="theme-selector" class="theme-selector">
+        <option value="system">System</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+      <span class="status-pill"><span class="status-dot" aria-hidden="true"></span>Offline ready</span>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section class="welcome" aria-labelledby="page-title">
+      <p class="eyebrow">Your daily workspace</p>
+      <h1 id="page-title">Make room for what matters.</h1>
+      <p class="intro">A simple, offline-ready home for your next small step.</p>
+    </section>
+
+    <section class="todo-app" aria-labelledby="todo-title">
+      <h2 id="todo-title">Today</h2>
+      <form class="todo-form" id="todo-form">
+        <label class="sr-only" for="todo-input">Add a todo</label>
+        <input id="todo-input" name="todo" type="text" placeholder="What needs doing?" autocomplete="off" maxlength="200" required>
+        <label class="sr-only" for="todo-priority">Priority</label>
+        <select id="todo-priority" name="priority">
+          <option value="low">Low priority</option>
+          <option value="medium" selected>Medium priority</option>
+          <option value="high">High priority</option>
+        </select>
+        <label class="sr-only" for="todo-category">Category</label>
+        <select id="todo-category" name="category">
+          <option value="personal" selected>Personal</option>
+          <option value="work">Work</option>
+          <option value="shopping">Shopping</option>
+          <option value="other">Other</option>
+        </select>
+        <label class="sr-only" for="todo-due">Due date</label>
+        <input id="todo-due" name="dueDate" type="date">
+        <button class="add-button" type="submit">Add todo</button>
+      </form>
+
+      <div class="todo-toolbar">
+        <div class="filters" role="group" aria-label="Status filter">
+          <button class="filter-button is-selected" type="button" data-status-filter="all" aria-pressed="true">All</button>
+          <button class="filter-button" type="button" data-status-filter="active" aria-pressed="false">Active</button>
+          <button class="filter-button" type="button" data-status-filter="completed" aria-pressed="false">Completed</button>
+        </div>
+        <div class="select-filters">
+          <label class="sr-only" for="priority-filter">Filter by priority</label>
+          <select id="priority-filter">
+            <option value="all">All priorities</option>
+            <option value="low">Low priority</option>
+            <option value="medium">Medium priority</option>
+            <option value="high">High priority</option>
+          </select>
+          <label class="sr-only" for="category-filter">Filter by category</label>
+          <select id="category-filter">
+            <option value="all">All categories</option>
+            <option value="personal">Personal</option>
+            <option value="work">Work</option>
+            <option value="shopping">Shopping</option>
+            <option value="other">Other</option>
+          </select>
+          <label class="sr-only" for="due-filter">Filter by due date</label>
+          <select id="due-filter">
+            <option value="all">All due dates</option>
+            <option value="none">No due date</option>
+            <option value="today">Due today</option>
+            <option value="overdue">Overdue</option>
+            <option value="upcoming">Upcoming</option>
+          </select>
+        </div>
+        <button class="clear-button" id="clear-completed" type="button">Clear completed</button>
+      <div class="backup-controls">
+        <button class="backup-button" id="export-backup" type="button">Export Backup</button>
+        <button class="backup-button" id="import-backup" type="button">Import Backup</button>
+        <input type="file" id="import-file" accept="application/json" class="sr-only">
+      </div>
+      </div>
+
+      <ul class="todo-list" id="todo-list" aria-live="polite"></ul>
+      <p class="empty-state" id="empty-state">No todos yet. Add one small thing to begin.</p>
+      <p class="status-message" id="status-message" aria-live="polite"></p>
+
+      <div class="todo-summary" aria-live="polite">
+        <span><strong id="total-count">0</strong> total</span>
+        <span><strong id="active-count">0</strong> active</span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>_myTodoHUB</span>
+    <span>Works offline after your first visit</span>
+  </footer>
+
+  <div class="dialog-overlay" id="import-dialog" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <h3 id="dialog-title">Confirm Import</h3>
+      <p id="dialog-message"></p>
+      <div class="dialog-actions">
+        <button class="dialog-button" id="dialog-cancel" type="button">Cancel</button>
+        <button class="dialog-button dialog-button-danger" id="dialog-confirm" type="button">Confirm Import</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
