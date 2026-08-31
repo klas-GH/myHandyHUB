@@ -722,7 +722,7 @@ function priceDelta(name, current) {
   const d = Number(current) - Number(last);
   const pct = last ? (d / Number(last)) * 100 : 0;
   const arrow = d > 0 ? "▲" : "▼";
-  return `<span class="delta ${d > 0 ? "up" : "down"}">${arrow} €${money(Math.abs(d))} (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)</span>`;
+  return `<span class="delta ${d > 0 ? "up" : "down"}">${arrow} ${money(Math.abs(d))} (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)</span>`;
 }
 
 function renderShopping() {
@@ -747,9 +747,9 @@ function renderShopping() {
     </div>
     <form id="shop-form" class="item-form">
       <input name="name" placeholder="Item" value="${editing ? esc(editing.name) : ""}" required>
-      <input name="qty" type="number" step="any" min="0" placeholder="Qty" value="${editing ? editing.qty : ""}" required>
+      <input name="qty" type="number" step="0.01" min="0.01" placeholder="Qty" value="${editing ? editing.qty : ""}" required>
       <input name="unit" placeholder="Unit" value="${editing ? esc(editing.unit) : ""}">
-      <input name="price" type="number" step="any" min="0" placeholder="Price" value="${editing ? editing.price : ""}" required>
+      <input name="price" type="number" step="0.01" min="0.01" placeholder="Price" value="${editing ? editing.price : ""}" required>
       <select name="category">${SHOP_CATS.map((c) => `<option ${editing && editing.category === c ? "selected" : ""}>${c}</option>`).join("")}</select>
       <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
       ${editing ? '<button type="button" class="ghost" data-act="cancel">Cancel</button>' : ""}
@@ -762,8 +762,8 @@ function renderShopping() {
         </select>
       </label>
       <button class="ghost" data-act="clear-bought">Clear bought</button>
-      <label class="muted">Budget €<input id="shop-budget" type="number" step="any" min="0" value="${list.budget || ""}"></label>
-      <label class="muted">Discount €<input id="shop-discount" type="number" step="any" min="0" value="${list.discount || ""}"></label>
+      <label class="muted">Budget <input id="shop-budget" type="number" step="0.01" min="0" value="${list.budget || ""}"></label>
+      <label class="muted">Discount <input id="shop-discount" type="number" step="0.01" min="0" value="${list.discount || ""}"></label>
     </div>
     <ul class="item-list">
       ${items.length ? items.map((it) => `
@@ -772,8 +772,8 @@ function renderShopping() {
             <input type="checkbox" data-act="bought" data-id="${it.id}" ${it.bought ? "checked" : ""}>
             <span class="item-name">${esc(it.name)}</span>
             <span class="muted">${esc(it.qty)} ${esc(it.unit)}</span>
-            <span class="muted">€${money(it.price)}/u</span>
-            <span class="item-total">€${money(Number(it.qty) * Number(it.price))}</span>
+            <span class="muted">${money(it.price)}/u</span>
+            <span class="item-total">${money(Number(it.qty) * Number(it.price))}</span>
             ${it.bought ? "" : priceDelta(it.name, it.price)}
           </label>
           <span class="row-actions">
@@ -784,11 +784,11 @@ function renderShopping() {
     </ul>
     <div class="totals">
       <span>Items: <strong>${items.length}</strong></span>
-      <span>Subtotal: <strong>€${money(subtotal)}</strong></span>
-      ${discount ? `<span>Discount: <strong>-€${money(discount)}</strong></span>` : ""}
-      <span>Total: <strong>€${money(total)}</strong></span>
+      <span>Subtotal: <strong>${money(subtotal)}</strong></span>
+      ${discount ? `<span>Discount: <strong>-${money(discount)}</strong></span>` : ""}
+      <span>Total: <strong>${money(total)}</strong></span>
     </div>
-    ${Number(list.budget) ? `<div class="budget">Budget €${money(list.budget)} · Spent €${money(total)} · Remaining <strong>€${money(list.budget - total)}</strong></div>` : ""}
+    ${Number(list.budget) ? `<div class="budget">Budget ${money(list.budget)} · Spent ${money(total)} · Remaining <strong>${money(list.budget - total)}</strong></div>` : ""}
   `;
 }
 
@@ -813,6 +813,7 @@ function initShopping() {
       bought: prev ? prev.bought : false,
     };
     if (!item.name) return;
+    if (item.qty <= 0) { alert("Quantity must be greater than 0"); return; }
     if (shop.editingId) {
       const idx = list.items.findIndex((i) => i.id === shop.editingId);
       if (idx > -1) list.items[idx] = item;
@@ -830,8 +831,14 @@ function initShopping() {
     const act = btn.dataset.act;
     const list = shopActive();
     if (act === "new-list") {
-      const name = prompt("List name:", "New list");
-      if (name) { const id = uid(); shop.data.lists.push({ id, name, category: "", discount: 0, budget: 0, items: [] }); shop.data.activeId = id; shopSave(); renderShopping(); }
+      const dialog = document.getElementById("list-dialog");
+      const input = document.getElementById("list-name");
+      if (dialog && input) {
+        input.value = "";
+        dialog.classList.add("is-visible");
+        dialog.setAttribute("aria-hidden", "false");
+        input.focus();
+      }
     } else if (act === "del-list") {
       if (shop.data.lists.length > 1 && confirm("Delete this list?")) { shop.data.lists = shop.data.lists.filter((l) => l.id !== list.id); shop.data.activeId = shop.data.lists[0].id; shopSave(); renderShopping(); }
     } else if (act === "clear-bought") {
@@ -840,6 +847,30 @@ function initShopping() {
     else if (act === "edit") { shop.editingId = btn.dataset.id; renderShopping(); }
     else if (act === "del") { list.items = list.items.filter((i) => i.id !== btn.dataset.id); shopSave(); renderShopping(); }
   });
+
+  const listDialog = document.getElementById("list-dialog");
+  const listForm = document.getElementById("list-form");
+  if (listForm) {
+    listForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = (listForm.name && listForm.name.value.trim()) || "";
+      if (!name) return;
+      const id = uid();
+      shop.data.lists.push({ id, name, category: "", discount: 0, budget: 0, items: [] });
+      shop.data.activeId = id;
+      shopSave();
+      renderShopping();
+      if (listDialog) { listDialog.classList.remove("is-visible"); listDialog.setAttribute("aria-hidden", "true"); }
+    });
+  }
+  if (listDialog) {
+    listDialog.addEventListener("click", (e) => {
+      if (e.target.matches('[data-close="list-dialog"]') || e.target === listDialog) {
+        listDialog.classList.remove("is-visible");
+        listDialog.setAttribute("aria-hidden", "true");
+      }
+    });
+  }
   root.addEventListener("change", (e) => {
     if (e.target.id === "shop-list") { shop.data.activeId = e.target.value; shop.editingId = null; shopSave(); renderShopping(); }
     else if (e.target.id === "shop-sort") { shop.sort = e.target.value; renderShopping(); }
@@ -874,8 +905,8 @@ function renderLinks() {
 
   root.innerHTML = `
     <form id="link-form" class="item-form">
-      <input name="name" placeholder="Name" required>
       <input name="url" placeholder="https://…" required>
+      <input name="name" placeholder="Name" required>
       <select name="category">${LINK_CATS.map((c) => `<option>${c}</option>`).join("")}</select>
       <input name="tags" placeholder="tags (comma)">
       <input name="notes" placeholder="notes">

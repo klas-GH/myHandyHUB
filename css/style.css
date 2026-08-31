@@ -632,6 +632,34 @@ button { font: inherit; cursor: pointer; }
   color: var(--bg-surface);
 }
 
+.dialog-button-primary {
+  border-color: var(--accent-strong);
+  color: var(--bg-surface);
+  background: var(--accent-strong);
+}
+
+.dialog-button-primary:hover,
+.dialog-button-primary:focus-visible {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.dialog-form input {
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+}
+
 .empty-state {
   margin: var(--space-lg) 0;
   padding: var(--space-lg);
@@ -833,6 +861,14 @@ button { font: inherit; cursor: pointer; }
 .item-form input[name="name"],
 .item-form input[name="title"],
 .item-form input[name="url"] { flex: 1 1 10rem; }
+.item-form #link-form input[name="url"] { flex: 1 1 100%; }
+.item-form #link-form input[name="name"],
+.item-form #link-form select[name="category"],
+.item-form #link-form input[name="tags"],
+.item-form #link-form input[name="notes"] {
+  flex: 1 1 calc(50% - 0.4rem);
+  max-width: calc(50% - 0.4rem);
+}
 .item-form input[name="qty"],
 .item-form input[name="price"],
 .item-form input[name="unit"] { flex: 0 1 5.5rem; }

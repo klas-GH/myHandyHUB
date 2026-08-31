@@ -22,8 +22,8 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="css/style.css">
-  <script type="module" src="js/app.js"></script>
+  <link rel="stylesheet" href="css/style.css?v=22">
+  <script type="module" src="js/app.js?v=22"></script>
 </head>
 <body>
   <header class="site-header">
@@ -154,6 +154,19 @@
         <button class="dialog-button" id="dialog-cancel" type="button">Cancel</button>
         <button class="dialog-button dialog-button-danger" id="dialog-confirm" type="button">Confirm Import</button>
       </div>
+    </div>
+  </div>
+
+  <div class="dialog-overlay" id="list-dialog" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="list-dialog-title">
+      <h3 id="list-dialog-title">New list</h3>
+      <form id="list-form" class="dialog-form">
+        <input id="list-name" name="name" placeholder="List name" required>
+        <div class="dialog-actions">
+          <button class="dialog-button" type="button" data-close="list-dialog">Cancel</button>
+          <button class="dialog-button dialog-button-primary" type="submit">Create</button>
+        </div>
+      </form>
     </div>
   </div>
 </body>

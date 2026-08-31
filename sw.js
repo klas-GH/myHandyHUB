@@ -1,4 +1,4 @@
-const CACHE_NAME = "_myTodoHUB-v20";
+const CACHE_NAME = "_myTodoHUB-v24";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -21,7 +21,6 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-// Remove older cache versions when a new service worker takes control.
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(
