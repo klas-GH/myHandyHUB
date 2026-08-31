@@ -953,8 +953,13 @@ button { font: inherit; cursor: pointer; }
 .site-footer .app-tagline { flex-basis: 100%; margin: var(--space-sm) 0 0; }
 
 .note-form { flex-direction: column; align-items: stretch; }
-.note-form .note-title { flex: 0 0 auto; }
-.note-form .note-title,
+.item-form.note-form input[name="title"] {
+  flex: 0 0 auto;
+  min-height: 2.4rem;
+  height: 2.4rem;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
 .note-form .note-row select,
 .note-form .note-row input,
 .note-form .add-button {
