@@ -955,17 +955,21 @@ button { font: inherit; cursor: pointer; }
 .note-form { flex-direction: column; align-items: stretch; }
 .item-form.note-form input[name="title"] {
   flex: 0 0 auto;
-  min-height: 2.4rem;
   height: 2.4rem;
   padding-top: 0.35rem;
   padding-bottom: 0.35rem;
 }
 .note-form .note-row select,
-.note-form .note-row input,
-.note-form .add-button {
-  min-height: 2.4rem;
+.note-form .note-row input {
+  height: 2.4rem;
   padding-top: 0.35rem;
   padding-bottom: 0.35rem;
+}
+.note-form .add-button {
+  height: 2.4rem;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  flex-basis: 100%;
 }
 .note-form .note-text {
   width: 100%;
