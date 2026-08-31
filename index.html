@@ -18,7 +18,7 @@
     })();
   </script>
   <meta name="description" content="A calm, focused space for the things you want to get done.">
-  <title>_myTodoHUB</title>
+  <title>_myHandyHub</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -27,9 +27,9 @@
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="./" aria-label="_myTodoHUB home">
+    <a class="brand" href="./" aria-label="_myHandyHub home">
       <span class="brand-mark" aria-hidden="true">+</span>
-      <span>_myTodoHUB</span>
+      <span>_myHandyHub</span>
     </a>
     <div class="header-controls">
       <label class="theme-control" for="theme-selector">Theme</label>
@@ -42,8 +42,13 @@
   </header>
 
   <main class="app-shell">
-    <section class="todo-app" aria-labelledby="todo-title">
-      <h2 id="todo-title">Handy Hub: Today</h2>
+    <nav class="tabs" role="tablist" aria-label="Apps">
+      <button class="tab is-selected" type="button" role="tab" data-app="todos" aria-selected="true">ToDos</button>
+      <button class="tab" type="button" role="tab" data-app="shops" aria-selected="false">Shops</button>
+      <button class="tab" type="button" role="tab" data-app="urls" aria-selected="false">Urls</button>
+    </nav>
+    <section class="view todo-app" id="view-todos" aria-labelledby="todo-title" role="tabpanel">
+      <h2 id="todo-title">ToDos</h2>
       <form class="todo-form" id="todo-form">
         <label class="sr-only" for="todo-input">Add a todo</label>
         <input id="todo-input" name="todo" type="text" placeholder="What needs doing?" autocomplete="off" maxlength="200" required>
@@ -113,10 +118,20 @@
         <span><strong id="active-count">0</strong> active</span>
       </div>
     </section>
+
+    <section class="view is-hidden" id="view-shops" role="tabpanel" aria-labelledby="shops-title">
+      <h2 id="shops-title">Shops</h2>
+      <p class="placeholder">Under construction…</p>
+    </section>
+
+    <section class="view is-hidden" id="view-urls" role="tabpanel" aria-labelledby="urls-title">
+      <h2 id="urls-title">Urls</h2>
+      <p class="placeholder">Under construction…</p>
+    </section>
   </main>
 
   <footer class="site-footer">
-    <span>_myTodoHUB</span>
+    <span>_myHandyHub</span>
     <span>Works offline after your first visit</span>
   </footer>
 

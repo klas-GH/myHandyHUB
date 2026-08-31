@@ -645,6 +645,40 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+// App tab navigation: each tab boots its own inner app.
+const APP_VIEWS = {
+  todos: { panel: "view-todos", init: initTodos },
+  shops: { panel: "view-shops", init: initShops },
+  urls: { panel: "view-urls", init: initUrls },
+};
+
+function initTodos() {}
+function initShops() {}
+function initUrls() {}
+
+function showApp(name) {
+  const app = APP_VIEWS[name];
+  if (!app) return;
+  Object.values(APP_VIEWS).forEach((a) => {
+    const panel = document.getElementById(a.panel);
+    if (panel) panel.classList.add("is-hidden");
+  });
+  const active = document.getElementById(app.panel);
+  if (active) active.classList.remove("is-hidden");
+  document.querySelectorAll(".tab").forEach((tab) => {
+    const selected = tab.dataset.app === name;
+    tab.classList.toggle("is-selected", selected);
+    tab.setAttribute("aria-selected", selected ? "true" : "false");
+  });
+  if (typeof app.init === "function") app.init();
+}
+
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => showApp(tab.dataset.app));
+});
+
+showApp("todos");
+
 // Register the service worker only when the browser supports offline caching.
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
