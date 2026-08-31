@@ -1,4 +1,4 @@
-const CACHE_NAME = "_myTodoHUB-v11";
+const CACHE_NAME = "_myTodoHUB-v12";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -33,27 +33,37 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Serve cached app-shell files first, then cache successful new GET responses.
+// Serve app-shell assets from cache first (offline-friendly), but always fetch
+// navigations (HTML) from the network first so content updates show immediately.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const request = event.request;
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          return networkResponse;
+        })
+        .catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
 
-      return fetch(event.request).then((networkResponse) => {
+      return fetch(request).then((networkResponse) => {
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === "opaque") {
           return networkResponse;
         }
 
         const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));
         return networkResponse;
-      }).catch(() => {
-        if (event.request.mode === "navigate") {
-          return caches.match("./index.html");
-        }
-        return undefined;
       });
     })
   );
