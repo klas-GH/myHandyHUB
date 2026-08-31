@@ -701,6 +701,18 @@ button { font: inherit; cursor: pointer; }
   .todo-form { display: flex; align-items: stretch; flex-direction: column; }
   .todo-form select,
   .todo-form input[type="date"] { width: 100%; }
+  .todo-form label.sr-only:not([for="todo-input"]) {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    clip: auto;
+    overflow: visible;
+    white-space: normal;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
   .add-button { width: 100%; }
   .todo-toolbar { align-items: stretch; flex-direction: column; gap: var(--space-sm); }
   .filters { justify-content: space-between; }
@@ -712,7 +724,7 @@ button { font: inherit; cursor: pointer; }
   .backup-button { width: 100%; }
   .todo-item { align-items: flex-start; flex-wrap: wrap; gap: var(--space-sm); }
   .todo-details { align-items: flex-start; flex-direction: column; }
-  .todo-actions { width: 100%; margin-left: 2.15rem; gap: var(--space-sm); }
+  .todo-actions { width: calc(100% - 2.15rem); margin-left: 2.15rem; gap: var(--space-sm); }
   .todo-actions button { flex: 1; border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
   .edit-form { grid-template-columns: 1fr 1fr; }
   .edit-form input { grid-column: 1 / -1; }
@@ -727,8 +739,8 @@ button { font: inherit; cursor: pointer; }
   .app-shell {
     width: 100%;
     margin-inline: 0;
-    padding-left: 0;
-    padding-right: 0;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
   .app-shell { padding-top: 0; padding-bottom: 0; }
   .site-header { padding-top: 0.75rem; }
