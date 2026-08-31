@@ -721,6 +721,113 @@ button { font: inherit; cursor: pointer; }
   .dialog-button { width: 100%; }
 }
 
+.install-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(0);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: min(100% - 1.5rem, 30rem);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface-raised);
+  box-shadow: var(--shadow-elevated);
+  animation: rise 300ms ease-out both;
+}
+
+.install-prompt[hidden] { display: none; }
+
+.install-icon {
+  flex: 0 0 auto;
+  width: 2.2rem;
+  height: 2.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--bg-surface);
+  background: var(--accent);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.install-body { flex: 1; min-width: 0; }
+
+.install-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.install-sub {
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.install-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.install-dismiss {
+  padding: 0.5rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.install-dismiss:hover,
+.install-dismiss:focus-visible {
+  color: var(--text-primary);
+}
+
+.install-button {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--accent-strong);
+  background: var(--accent-strong);
+  color: var(--bg-surface);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.install-button:hover,
+.install-button:focus-visible {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+@media (max-width: 600px) {
+  .site-header,
+  .site-footer,
+  .app-shell {
+    width: 100%;
+    margin-inline: 0;
+  }
+  .site-header,
+  .site-footer,
+  .app-shell {
+    padding-left: max(0.6rem, env(safe-area-inset-left));
+    padding-right: max(0.6rem, env(safe-area-inset-right));
+  }
+  .site-header { padding-top: max(0.75rem, env(safe-area-inset-top)); }
+  .site-footer { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
