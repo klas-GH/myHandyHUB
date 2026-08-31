@@ -954,6 +954,14 @@ button { font: inherit; cursor: pointer; }
 
 .note-form { flex-direction: column; align-items: stretch; }
 .note-form .note-title { flex: 0 0 auto; }
+.note-form .note-title,
+.note-form .note-row select,
+.note-form .note-row input,
+.note-form .add-button {
+  min-height: 2.4rem;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
 .note-form .note-text {
   width: 100%;
   min-height: 6rem;
