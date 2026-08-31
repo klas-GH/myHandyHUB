@@ -747,9 +747,9 @@ function renderShopping() {
     </div>
     <form id="shop-form" class="item-form">
       <input name="name" placeholder="Item" value="${editing ? esc(editing.name) : ""}" required>
-      <input name="qty" type="number" step="0.01" min="0.01" placeholder="Qty" value="${editing ? editing.qty : ""}" required>
+      <input name="qty" type="number" step="0.10" min="0.10" placeholder="Qty" value="${editing ? editing.qty : ""}" required>
       <input name="unit" placeholder="Unit" value="${editing ? esc(editing.unit) : ""}">
-      <input name="price" type="number" step="0.01" min="0.01" placeholder="Price" value="${editing ? editing.price : ""}" required>
+      <input name="price" type="number" step="0.05" min="0.05" placeholder="Price" value="${editing ? editing.price : ""}" required>
       <select name="category">${SHOP_CATS.map((c) => `<option ${editing && editing.category === c ? "selected" : ""}>${c}</option>`).join("")}</select>
       <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
       ${editing ? '<button type="button" class="ghost" data-act="cancel">Cancel</button>' : ""}
@@ -814,6 +814,7 @@ function initShopping() {
     };
     if (!item.name) return;
     if (item.qty <= 0) { alert("Quantity must be greater than 0"); return; }
+    if (item.price <= 0) { alert("Price must be greater than 0"); return; }
     if (shop.editingId) {
       const idx = list.items.findIndex((i) => i.id === shop.editingId);
       if (idx > -1) list.items[idx] = item;
@@ -840,7 +841,24 @@ function initShopping() {
         input.focus();
       }
     } else if (act === "del-list") {
-      if (shop.data.lists.length > 1 && confirm("Delete this list?")) { shop.data.lists = shop.data.lists.filter((l) => l.id !== list.id); shop.data.activeId = shop.data.lists[0].id; shopSave(); renderShopping(); }
+      const confirmDialog = document.getElementById("confirm-dialog");
+      const confirmMessage = document.getElementById("confirm-dialog-message");
+      const confirmOk = document.getElementById("confirm-dialog-ok");
+      if (confirmDialog && confirmMessage && confirmOk) {
+        confirmMessage.textContent = "Delete this list?";
+        confirmOk.onclick = () => {
+          if (shop.data.lists.length > 1) {
+            shop.data.lists = shop.data.lists.filter((l) => l.id !== list.id);
+            shop.data.activeId = shop.data.lists[0].id;
+            shopSave();
+            renderShopping();
+          }
+          confirmDialog.classList.remove("is-visible");
+          confirmDialog.setAttribute("aria-hidden", "true");
+        };
+        confirmDialog.classList.add("is-visible");
+        confirmDialog.setAttribute("aria-hidden", "false");
+      }
     } else if (act === "clear-bought") {
       list.items = list.items.filter((i) => !i.bought); shopSave(); renderShopping();
     } else if (act === "cancel") { shop.editingId = null; renderShopping(); }
@@ -868,6 +886,15 @@ function initShopping() {
       if (e.target.matches('[data-close="list-dialog"]') || e.target === listDialog) {
         listDialog.classList.remove("is-visible");
         listDialog.setAttribute("aria-hidden", "true");
+      }
+    });
+  }
+  const confirmDialog = document.getElementById("confirm-dialog");
+  if (confirmDialog) {
+    confirmDialog.addEventListener("click", (e) => {
+      if (e.target.matches('[data-close="confirm-dialog"]') || e.target === confirmDialog) {
+        confirmDialog.classList.remove("is-visible");
+        confirmDialog.setAttribute("aria-hidden", "true");
       }
     });
   }
