@@ -14,6 +14,7 @@
       var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       var effective = theme === "light" || theme === "dark" ? theme : (dark ? "dark" : "light");
       document.documentElement.setAttribute("data-theme", effective);
+      document.documentElement.style.colorScheme = effective;
     })();
   </script>
   <meta name="description" content="A calm, focused space for the things you want to get done.">
@@ -127,18 +128,6 @@
         <button class="dialog-button" id="dialog-cancel" type="button">Cancel</button>
         <button class="dialog-button dialog-button-danger" id="dialog-confirm" type="button">Confirm Import</button>
       </div>
-    </div>
-  </div>
-
-  <div class="install-prompt" id="install-prompt" hidden>
-    <span class="install-icon" aria-hidden="true">+</span>
-    <div class="install-body">
-      <p class="install-title">Install Handy Hub</p>
-      <p class="install-sub">Add it to your home screen for quick, offline access.</p>
-    </div>
-    <div class="install-actions">
-      <button class="install-dismiss" id="install-dismiss" type="button">Not now</button>
-      <button class="install-button" id="install-button" type="button">Install</button>
     </div>
   </div>
 </body>

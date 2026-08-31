@@ -10,7 +10,7 @@ function applyTheme(theme) {
   const root = document.documentElement;
   const effectiveTheme = theme === "dark" ? "dark" : "light";
   root.setAttribute("data-theme", effectiveTheme);
-  root.removeAttribute("data-color-scheme");
+  root.style.colorScheme = effectiveTheme;
   const metaTheme = document.querySelector('meta[name="theme-color"]');
   if (metaTheme) {
     metaTheme.setAttribute("content", effectiveTheme === "dark" ? themeColors.dark : themeColors.light);
@@ -653,48 +653,3 @@ if ("serviceWorker" in navigator) {
     });
   });
 }
-
-// Offer a native install prompt when the app is installable.
-const installPrompt = document.querySelector("#install-prompt");
-const installButton = document.querySelector("#install-button");
-const installDismiss = document.querySelector("#install-dismiss");
-const INSTALL_DISMISSED_KEY = "_myTodoHUB.installDismissed";
-let deferredPrompt = null;
-
-function showInstallPrompt() {
-  if (!installPrompt || !deferredPrompt) return;
-  if (localStorage.getItem(INSTALL_DISMISSED_KEY) === "true") return;
-  installPrompt.hidden = false;
-}
-
-function hideInstallPrompt() {
-  if (installPrompt) installPrompt.hidden = true;
-}
-
-window.addEventListener("beforeinstallprompt", (event) => {
-  event.preventDefault();
-  deferredPrompt = event;
-  showInstallPrompt();
-});
-
-if (installButton) {
-  installButton.addEventListener("click", async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    hideInstallPrompt();
-  });
-}
-
-if (installDismiss) {
-  installDismiss.addEventListener("click", () => {
-    localStorage.setItem(INSTALL_DISMISSED_KEY, "true");
-    hideInstallPrompt();
-  });
-}
-
-window.addEventListener("appinstalled", () => {
-  deferredPrompt = null;
-  hideInstallPrompt();
-});
