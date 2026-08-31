@@ -645,16 +645,24 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// App tab navigation: each tab boots its own inner app.
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const money = (n) => (Number(n) || 0).toFixed(2);
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function storeGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
+}
+function storeSet(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
 const APP_VIEWS = {
   todos: { panel: "view-todos", init: initTodos },
-  shops: { panel: "view-shops", init: initShops },
-  urls: { panel: "view-urls", init: initUrls },
+  shopping: { panel: "view-shopping", init: initShopping },
+  links: { panel: "view-links", init: initLinks },
+  notes: { panel: "view-notes", init: initNotes },
 };
 
 function initTodos() {}
-function initShops() {}
-function initUrls() {}
 
 function showApp(name) {
   const app = APP_VIEWS[name];
@@ -678,6 +686,352 @@ document.querySelectorAll(".tab").forEach((tab) => {
 });
 
 showApp("todos");
+
+const SHOP_KEY = "_myHandyHub.shopping";
+const SHOP_CATS = ["Food", "Drinks", "Cleaning", "Other"];
+const shop = { inited: false, data: null, editingId: null, sort: "item" };
+
+function shopLoad() {
+  if (!shop.data) {
+    shop.data = storeGet(SHOP_KEY, { lists: [], activeId: null });
+    if (!shop.data.lists.length) {
+      const id = uid();
+      shop.data.lists.push({ id, name: "Supermarket", category: "", discount: 0, budget: 0, items: [] });
+      shop.data.activeId = id;
+    }
+  }
+  return shop.data;
+}
+function shopSave() { storeSet(SHOP_KEY, shop.data); }
+function shopActive() { return shop.data.lists.find((l) => l.id === shop.data.activeId) || shop.data.lists[0]; }
+function shopHistory() { return storeGet("_myHandyHub.priceHistory", {}); }
+function shopRecordPrice(name, price) {
+  const h = shopHistory();
+  const k = (name || "").toLowerCase();
+  h[k] = h[k] || [];
+  h[k].push(Number(price));
+  storeSet("_myHandyHub.priceHistory", h);
+}
+function shopLastPrice(name) {
+  const arr = shopHistory()[(name || "").toLowerCase()] || [];
+  return arr.length ? arr[arr.length - 1] : null;
+}
+function priceDelta(name, current) {
+  const last = shopLastPrice(name);
+  if (last == null || Number(last) === Number(current)) return "";
+  const d = Number(current) - Number(last);
+  const pct = last ? (d / Number(last)) * 100 : 0;
+  const arrow = d > 0 ? "▲" : "▼";
+  return `<span class="delta ${d > 0 ? "up" : "down"}">${arrow} €${money(Math.abs(d))} (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)</span>`;
+}
+
+function renderShopping() {
+  shopLoad();
+  const root = document.getElementById("shopping-app");
+  const list = shopActive();
+  const lists = shop.data.lists;
+  const items = (list.items || []).slice().sort((a, b) =>
+    shop.sort === "category"
+      ? (a.category || "").localeCompare(b.category || "") || a.name.localeCompare(b.name)
+      : a.name.localeCompare(b.name));
+  const subtotal = items.reduce((s, it) => s + Number(it.qty) * Number(it.price), 0);
+  const discount = Number(list.discount) || 0;
+  const total = subtotal - discount;
+  const editing = shop.editingId ? items.find((i) => i.id === shop.editingId) : null;
+
+  root.innerHTML = `
+    <div class="app-bar">
+      <select id="shop-list">${lists.map((l) => `<option value="${l.id}" ${l.id === list.id ? "selected" : ""}>${esc(l.name)}</option>`).join("")}</select>
+      <button class="ghost" data-act="new-list">+ List</button>
+      <button class="ghost danger" data-act="del-list">Delete</button>
+    </div>
+    <form id="shop-form" class="item-form">
+      <input name="name" placeholder="Item" value="${editing ? esc(editing.name) : ""}" required>
+      <input name="qty" type="number" step="any" min="0" placeholder="Qty" value="${editing ? editing.qty : ""}" required>
+      <input name="unit" placeholder="Unit" value="${editing ? esc(editing.unit) : ""}">
+      <input name="price" type="number" step="any" min="0" placeholder="Price" value="${editing ? editing.price : ""}" required>
+      <select name="category">${SHOP_CATS.map((c) => `<option ${editing && editing.category === c ? "selected" : ""}>${c}</option>`).join("")}</select>
+      <input name="discount" type="number" step="any" min="0" placeholder="Discount" value="${editing ? (list.discount || "") : ""}">
+      <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
+      ${editing ? '<button type="button" class="ghost" data-act="cancel">Cancel</button>' : ""}
+    </form>
+    <div class="app-bar">
+      <label class="muted">Sort
+        <select id="shop-sort">
+          <option value="item" ${shop.sort === "item" ? "selected" : ""}>Item</option>
+          <option value="category" ${shop.sort === "category" ? "selected" : ""}>Category</option>
+        </select>
+      </label>
+      <button class="ghost" data-act="clear-bought">Clear bought</button>
+      <label class="muted">Budget €<input id="shop-budget" type="number" step="any" min="0" value="${list.budget || ""}"></label>
+    </div>
+    <ul class="item-list">
+      ${items.length ? items.map((it) => `
+        <li class="item ${it.bought ? "is-bought" : ""}">
+          <label class="item-main">
+            <input type="checkbox" data-act="bought" data-id="${it.id}" ${it.bought ? "checked" : ""}>
+            <span class="item-name">${esc(it.name)}</span>
+            <span class="muted">${esc(it.qty)} ${esc(it.unit)}</span>
+            <span class="muted">€${money(it.price)}/u</span>
+            <span class="item-total">€${money(Number(it.qty) * Number(it.price))}</span>
+            ${it.bought ? "" : priceDelta(it.name, it.price)}
+          </label>
+          <span class="row-actions">
+            <button class="ghost" data-act="edit" data-id="${it.id}">Edit</button>
+            <button class="ghost danger" data-act="del" data-id="${it.id}">Del</button>
+          </span>
+        </li>`).join("") : '<li class="empty">No items yet.</li>'}
+    </ul>
+    <div class="totals">
+      <span>Items: <strong>${items.length}</strong></span>
+      <span>Subtotal: <strong>€${money(subtotal)}</strong></span>
+      ${discount ? `<span>Discount: <strong>-€${money(discount)}</strong></span>` : ""}
+      <span>Total: <strong>€${money(total)}</strong></span>
+    </div>
+    ${Number(list.budget) ? `<div class="budget">Budget €${money(list.budget)} · Spent €${money(total)} · Remaining <strong>€${money(list.budget - total)}</strong></div>` : ""}
+  `;
+}
+
+function initShopping() {
+  shopLoad();
+  if (shop.inited) { renderShopping(); return; }
+  shop.inited = true;
+  const root = document.getElementById("shopping-app");
+  root.addEventListener("submit", (e) => {
+    if (e.target.id !== "shop-form") return;
+    e.preventDefault();
+    const f = e.target;
+    const list = shopActive();
+    const prev = shop.editingId ? list.items.find((i) => i.id === shop.editingId) : null;
+    const item = {
+      id: shop.editingId || uid(),
+      name: f.name.value.trim(),
+      qty: Number(f.qty.value) || 0,
+      unit: f.unit.value.trim(),
+      price: Number(f.price.value) || 0,
+      category: f.category.value,
+      bought: prev ? prev.bought : false,
+    };
+    if (!item.name) return;
+    list.discount = Number(f.discount.value) || 0;
+    if (shop.editingId) {
+      const idx = list.items.findIndex((i) => i.id === shop.editingId);
+      if (idx > -1) list.items[idx] = item;
+    } else {
+      list.items.push(item);
+    }
+    shopRecordPrice(item.name, item.price);
+    shop.editingId = null;
+    shopSave();
+    renderShopping();
+  });
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    const act = btn.dataset.act;
+    const list = shopActive();
+    if (act === "new-list") {
+      const name = prompt("List name:", "New list");
+      if (name) { const id = uid(); shop.data.lists.push({ id, name, category: "", discount: 0, budget: 0, items: [] }); shop.data.activeId = id; shopSave(); renderShopping(); }
+    } else if (act === "del-list") {
+      if (shop.data.lists.length > 1 && confirm("Delete this list?")) { shop.data.lists = shop.data.lists.filter((l) => l.id !== list.id); shop.data.activeId = shop.data.lists[0].id; shopSave(); renderShopping(); }
+    } else if (act === "clear-bought") {
+      list.items = list.items.filter((i) => !i.bought); shopSave(); renderShopping();
+    } else if (act === "cancel") { shop.editingId = null; renderShopping(); }
+    else if (act === "edit") { shop.editingId = btn.dataset.id; renderShopping(); }
+    else if (act === "del") { list.items = list.items.filter((i) => i.id !== btn.dataset.id); shopSave(); renderShopping(); }
+  });
+  root.addEventListener("change", (e) => {
+    if (e.target.id === "shop-list") { shop.data.activeId = e.target.value; shop.editingId = null; shopSave(); renderShopping(); }
+    else if (e.target.id === "shop-sort") { shop.sort = e.target.value; renderShopping(); }
+    else if (e.target.id === "shop-budget") { shopActive().budget = Number(e.target.value) || 0; shopSave(); renderShopping(); }
+    else if (e.target.matches('[data-act="bought"]')) {
+      const it = shopActive().items.find((i) => i.id === e.target.dataset.id);
+      if (it) { it.bought = e.target.checked; shopSave(); renderShopping(); }
+    }
+  });
+  renderShopping();
+}
+
+const LINKS_KEY = "_myHandyHub.links";
+const LINK_CATS = ["Work", "Shopping", "Finance", "Travel", "Tools", "Other"];
+const links = { inited: false, data: null, filter: "all", q: "" };
+
+function linksLoad() { if (!links.data) links.data = storeGet(LINKS_KEY, []); return links.data; }
+function linksSave() { storeSet(LINKS_KEY, links.data); }
+function domainOf(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return ""; } }
+
+function renderLinks() {
+  linksLoad();
+  const root = document.getElementById("links-app");
+  const q = links.q.toLowerCase();
+  const filtered = links.data.filter((l) => {
+    if (links.filter === "fav" && !l.favorite) return false;
+    if (["Work", "Shopping", "Finance", "Travel", "Tools", "Other"].includes(links.filter) && l.category !== links.filter) return false;
+    if (q && !(`${l.name} ${l.url} ${l.notes || ""} ${(l.tags || []).join(" ")}`.toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a, b) => (b.favorite - a.favorite) || a.name.localeCompare(b.name));
+
+  root.innerHTML = `
+    <form id="link-form" class="item-form">
+      <input name="name" placeholder="Name" required>
+      <input name="url" placeholder="https://…" required>
+      <select name="category">${LINK_CATS.map((c) => `<option>${c}</option>`).join("")}</select>
+      <input name="tags" placeholder="tags (comma)">
+      <input name="notes" placeholder="notes">
+      <button type="submit" class="add-button">Add</button>
+    </form>
+    <div class="app-bar">
+      <input id="link-search" placeholder="Search…" value="${esc(links.q)}">
+      <select id="link-filter">
+        <option value="all" ${links.filter === "all" ? "selected" : ""}>All</option>
+        <option value="fav" ${links.filter === "fav" ? "selected" : ""}>⭐ Favorites</option>
+        ${LINK_CATS.map((c) => `<option value="${c}" ${links.filter === c ? "selected" : ""}>${c}</option>`).join("")}
+      </select>
+    </div>
+    <ul class="item-list">
+      ${filtered.length ? filtered.map((l) => `
+        <li class="item">
+          <div class="item-main">
+            <span class="item-name">${l.favorite ? "⭐ " : ""}${esc(l.name)}</span>
+            <span class="muted">${esc(domainOf(l.url))}</span>
+            ${(l.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+          </div>
+          <span class="row-actions">
+            <a class="ghost" href="${esc(l.url)}" target="_blank" rel="noopener">Open</a>
+            <button class="ghost" data-act="copy" data-id="${l.id}">Copy</button>
+            <button class="ghost" data-act="share" data-id="${l.id}">Share</button>
+            <button class="ghost" data-act="fav" data-id="${l.id}">${l.favorite ? "Unfav" : "Fav"}</button>
+            <button class="ghost" data-act="edit" data-id="${l.id}">Edit</button>
+            <button class="ghost danger" data-act="del" data-id="${l.id}">Del</button>
+          </span>
+        </li>`).join("") : '<li class="empty">No links yet.</li>'}
+    </ul>
+  `;
+}
+
+function initLinks() {
+  linksLoad();
+  if (links.inited) { renderLinks(); return; }
+  links.inited = true;
+  const root = document.getElementById("links-app");
+  root.addEventListener("submit", (e) => {
+    if (e.target.id !== "link-form") return;
+    e.preventDefault();
+    const f = e.target;
+    const url = f.url.value.trim();
+    if (!/^https?:\/\//i.test(url)) { alert("Enter a full URL (https://…)"); return; }
+    links.data.push({ id: uid(), name: f.name.value.trim() || domainOf(url), url, category: f.category.value, tags: f.tags.value.split(",").map((t) => t.trim()).filter(Boolean), notes: f.notes.value.trim(), favorite: false, date: new Date().toISOString() });
+    linksSave(); renderLinks();
+  });
+  root.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    const act = btn.dataset.act;
+    const l = links.data.find((x) => x.id === btn.dataset.id);
+    if (!l) return;
+    if (act === "copy") { try { await navigator.clipboard.writeText(l.url); btn.textContent = "Copied"; setTimeout(() => renderLinks(), 800); } catch (err) { alert(l.url); } }
+    else if (act === "share") { if (navigator.share) { try { await navigator.share({ title: l.name, url: l.url }); } catch (err) {} } else { alert(l.url); } }
+    else if (act === "fav") { l.favorite = !l.favorite; linksSave(); renderLinks(); }
+    else if (act === "del") { links.data = links.data.filter((x) => x.id !== l.id); linksSave(); renderLinks(); }
+    else if (act === "edit") {
+      const name = prompt("Name:", l.name);
+      const url = prompt("URL:", l.url);
+      const tags = prompt("Tags (comma):", (l.tags || []).join(", "));
+      if (name != null && url != null && /^https?:\/\//i.test(url.trim())) { l.name = name.trim() || domainOf(url); l.url = url.trim(); l.tags = tags.split(",").map((t) => t.trim()).filter(Boolean); linksSave(); renderLinks(); }
+    }
+  });
+  root.addEventListener("input", (e) => {
+    if (e.target.id === "link-search") { links.q = e.target.value; renderLinks(); }
+  });
+  root.addEventListener("change", (e) => {
+    if (e.target.id === "link-filter") { links.filter = e.target.value; renderLinks(); }
+  });
+  renderLinks();
+}
+
+const NOTES_KEY = "_myHandyHub.notes";
+const NOTE_COLORS = ["", "#fde8e3", "#e3f0fd", "#eafde3", "#f3e3fd"];
+const notes = { inited: false, data: null, favOnly: false, q: "" };
+
+function notesLoad() { if (!notes.data) notes.data = storeGet(NOTES_KEY, []); return notes.data; }
+function notesSave() { storeSet(NOTES_KEY, notes.data); }
+
+function renderNotes() {
+  notesLoad();
+  const root = document.getElementById("notes-app");
+  const q = notes.q.toLowerCase();
+  const filtered = notes.data.filter((n) => {
+    if (notes.favOnly && !n.favorite) return false;
+    if (q && !(`${n.title} ${n.text} ${(n.tags || []).join(" ")}`.toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a, b) => (b.favorite - a.favorite) || (b.updated || "").localeCompare(a.updated || ""));
+
+  root.innerHTML = `
+    <form id="note-form" class="item-form">
+      <input name="title" placeholder="Title" required>
+      <input name="text" placeholder="Note…">
+      <select name="color">${NOTE_COLORS.map((c, i) => `<option value="${i}" ${i === 0 ? "selected" : ""}>${c ? "Color " + i : "Default"}</option>`).join("")}</select>
+      <input name="tags" placeholder="tags">
+      <button type="submit" class="add-button">Add</button>
+    </form>
+    <div class="app-bar">
+      <input id="note-search" placeholder="Search…" value="${esc(notes.q)}">
+      <button class="ghost" data-act="favonly">${notes.favOnly ? "All" : "Favorites"}</button>
+    </div>
+    <ul class="item-list">
+      ${filtered.length ? filtered.map((n) => `
+        <li class="item note" style="border-left-color:${NOTE_COLORS[n.color || 0] || "var(--border-default)"}">
+          <div class="item-main">
+            <span class="item-name">${n.favorite ? "📌 " : ""}${esc(n.title)}</span>
+            <span class="muted">${esc((n.text || "").slice(0, 80))}</span>
+            ${(n.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+            <span class="muted tiny">${n.updated ? new Date(n.updated).toLocaleDateString() : ""}</span>
+          </div>
+          <span class="row-actions">
+            <button class="ghost" data-act="fav" data-id="${n.id}">${n.favorite ? "Unpin" : "Pin"}</button>
+            <button class="ghost" data-act="edit" data-id="${n.id}">Edit</button>
+            <button class="ghost danger" data-act="del" data-id="${n.id}">Del</button>
+          </span>
+        </li>`).join("") : '<li class="empty">No notes yet.</li>'}
+    </ul>
+  `;
+}
+
+function initNotes() {
+  notesLoad();
+  if (notes.inited) { renderNotes(); return; }
+  notes.inited = true;
+  const root = document.getElementById("notes-app");
+  root.addEventListener("submit", (e) => {
+    if (e.target.id !== "note-form") return;
+    e.preventDefault();
+    const f = e.target;
+    const now = new Date().toISOString();
+    notes.data.push({ id: uid(), title: f.title.value.trim(), text: f.text.value.trim(), color: Number(f.color.value) || 0, tags: f.tags.value.split(",").map((t) => t.trim()).filter(Boolean), favorite: false, created: now, updated: now });
+    notesSave(); renderNotes();
+  });
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === "favonly") { notes.favOnly = !notes.favOnly; renderNotes(); return; }
+    const n = notes.data.find((x) => x.id === btn.dataset.id);
+    if (!n) return;
+    if (act === "fav") { n.favorite = !n.favorite; notesSave(); renderNotes(); }
+    else if (act === "del") { notes.data = notes.data.filter((x) => x.id !== n.id); notesSave(); renderNotes(); }
+    else if (act === "edit") {
+      const title = prompt("Title:", n.title);
+      const text = prompt("Note:", n.text);
+      const tags = prompt("Tags:", (n.tags || []).join(", "));
+      if (title != null) { n.title = title.trim(); if (text != null) n.text = text.trim(); if (tags != null) n.tags = tags.split(",").map((t) => t.trim()).filter(Boolean); n.updated = new Date().toISOString(); notesSave(); renderNotes(); }
+    }
+  });
+  root.addEventListener("input", (e) => {
+    if (e.target.id === "note-search") { notes.q = e.target.value; renderNotes(); }
+  });
+  renderNotes();
+}
 
 // Register the service worker only when the browser supports offline caching.
 if ("serviceWorker" in navigator) {

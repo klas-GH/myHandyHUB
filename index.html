@@ -44,8 +44,9 @@
   <main class="app-shell">
     <nav class="tabs" role="tablist" aria-label="Apps">
       <button class="tab is-selected" type="button" role="tab" data-app="todos" aria-selected="true">ToDos</button>
-      <button class="tab" type="button" role="tab" data-app="shops" aria-selected="false">Shops</button>
-      <button class="tab" type="button" role="tab" data-app="urls" aria-selected="false">Urls</button>
+      <button class="tab" type="button" role="tab" data-app="shopping" aria-selected="false">Shopping</button>
+      <button class="tab" type="button" role="tab" data-app="links" aria-selected="false">Links</button>
+      <button class="tab" type="button" role="tab" data-app="notes" aria-selected="false">Notes</button>
     </nav>
     <section class="view todo-app" id="view-todos" aria-labelledby="todo-title" role="tabpanel">
       <h2 id="todo-title">ToDos</h2>
@@ -119,15 +120,31 @@
       </div>
     </section>
 
-    <section class="view is-hidden" id="view-shops" role="tabpanel" aria-labelledby="shops-title">
-      <h2 id="shops-title">Shops</h2>
-      <p class="placeholder">Under construction…</p>
+    <section class="view is-hidden" id="view-shopping" role="tabpanel" aria-labelledby="shopping-title">
+      <div class="app-head">
+        <h2 id="shopping-title">Shopping</h2>
+        <button class="add-button mini" type="button" data-shopping="new-list">+ List</button>
+      </div>
+      <div id="shopping-app"></div>
     </section>
 
-    <section class="view is-hidden" id="view-urls" role="tabpanel" aria-labelledby="urls-title">
-      <h2 id="urls-title">Urls</h2>
-      <p class="placeholder">Under construction…</p>
+    <section class="view is-hidden" id="view-links" role="tabpanel" aria-labelledby="links-title">
+      <div class="app-head">
+        <h2 id="links-title">Links</h2>
+        <button class="add-button mini" type="button" data-links="new">+ Link</button>
+      </div>
+      <div id="links-app"></div>
     </section>
+
+    <section class="view is-hidden" id="view-notes" role="tabpanel" aria-labelledby="notes-title">
+      <div class="app-head">
+        <h2 id="notes-title">Notes</h2>
+        <button class="add-button mini" type="button" data-notes="new">+ Note</button>
+      </div>
+      <div id="notes-app"></div>
+    </section>
+
+    <p class="app-tagline">One small app for all the little things you need every day.</p>
   </main>
 
   <footer class="site-footer">
