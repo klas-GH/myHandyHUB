@@ -956,6 +956,10 @@ const notes = { inited: false, data: null, favOnly: false, q: "" };
 
 function notesLoad() { if (!notes.data) notes.data = storeGet(NOTES_KEY, []); return notes.data; }
 function notesSave() { storeSet(NOTES_KEY, notes.data); }
+function noteStyle(n) {
+  const c = NOTE_COLORS[n.color || 0] || null;
+  return c ? `border-left-color:${c};background:${c}22;` : "border-left-color:var(--border-default);";
+}
 
 function renderNotes() {
   notesLoad();
@@ -968,12 +972,14 @@ function renderNotes() {
   }).sort((a, b) => (b.favorite - a.favorite) || (b.updated || "").localeCompare(a.updated || ""));
 
   root.innerHTML = `
-    <form id="note-form" class="item-form">
-      <input name="title" placeholder="Title" required>
-      <input name="text" placeholder="Note…">
-      <select name="color">${NOTE_COLORS.map((c, i) => `<option value="${i}" ${i === 0 ? "selected" : ""}>${c ? "Color " + i : "Default"}</option>`).join("")}</select>
-      <input name="tags" placeholder="tags">
-      <button type="submit" class="add-button">Add</button>
+    <form id="note-form" class="item-form note-form">
+      <input name="title" class="note-title" placeholder="Title" required>
+      <textarea name="text" class="note-text" placeholder="Note…" rows="4"></textarea>
+      <div class="note-row">
+        <select name="color">${NOTE_COLORS.map((c, i) => `<option value="${i}" ${i === 0 ? "selected" : ""}>${c ? "Color " + i : "Default"}</option>`).join("")}</select>
+        <input name="tags" placeholder="tags">
+        <button type="submit" class="add-button">Add</button>
+      </div>
     </form>
     <div class="app-bar">
       <input id="note-search" placeholder="Search…" value="${esc(notes.q)}">
@@ -981,7 +987,7 @@ function renderNotes() {
     </div>
     <ul class="item-list">
       ${filtered.length ? filtered.map((n) => `
-        <li class="item note" style="border-left-color:${NOTE_COLORS[n.color || 0] || "var(--border-default)"}">
+        <li class="item note" style="${noteStyle(n)}">
           <div class="item-main">
             <span class="item-name">${n.favorite ? "📌 " : ""}${esc(n.title)}</span>
             <span class="muted">${esc((n.text || "").slice(0, 80))}</span>

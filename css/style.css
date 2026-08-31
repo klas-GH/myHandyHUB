@@ -949,6 +949,26 @@ button { font: inherit; cursor: pointer; }
   font-size: 0.78rem;
 }
 
+.site-footer { flex-wrap: wrap; }
+.site-footer .app-tagline { flex-basis: 100%; margin: var(--space-sm) 0 0; }
+
+.note-form { flex-direction: column; align-items: stretch; }
+.note-form .note-title { flex: 1 1 auto; }
+.note-form .note-text {
+  width: 100%;
+  min-height: 6rem;
+  resize: vertical;
+  font: inherit;
+  padding: 0.7rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.note-form .note-row { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.note-form .note-row select,
+.note-form .note-row input { flex: 1 1 10rem; }
+
 @media (max-width: 600px) {
   .site-header,
   .site-footer,
