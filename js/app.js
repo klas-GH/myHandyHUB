@@ -751,7 +751,6 @@ function renderShopping() {
       <input name="unit" placeholder="Unit" value="${editing ? esc(editing.unit) : ""}">
       <input name="price" type="number" step="any" min="0" placeholder="Price" value="${editing ? editing.price : ""}" required>
       <select name="category">${SHOP_CATS.map((c) => `<option ${editing && editing.category === c ? "selected" : ""}>${c}</option>`).join("")}</select>
-      <input name="discount" type="number" step="any" min="0" placeholder="Discount" value="${editing ? (list.discount || "") : ""}">
       <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
       ${editing ? '<button type="button" class="ghost" data-act="cancel">Cancel</button>' : ""}
     </form>
@@ -764,6 +763,7 @@ function renderShopping() {
       </label>
       <button class="ghost" data-act="clear-bought">Clear bought</button>
       <label class="muted">Budget €<input id="shop-budget" type="number" step="any" min="0" value="${list.budget || ""}"></label>
+      <label class="muted">Discount €<input id="shop-discount" type="number" step="any" min="0" value="${list.discount || ""}"></label>
     </div>
     <ul class="item-list">
       ${items.length ? items.map((it) => `
@@ -813,7 +813,6 @@ function initShopping() {
       bought: prev ? prev.bought : false,
     };
     if (!item.name) return;
-    list.discount = Number(f.discount.value) || 0;
     if (shop.editingId) {
       const idx = list.items.findIndex((i) => i.id === shop.editingId);
       if (idx > -1) list.items[idx] = item;
@@ -845,6 +844,7 @@ function initShopping() {
     if (e.target.id === "shop-list") { shop.data.activeId = e.target.value; shop.editingId = null; shopSave(); renderShopping(); }
     else if (e.target.id === "shop-sort") { shop.sort = e.target.value; renderShopping(); }
     else if (e.target.id === "shop-budget") { shopActive().budget = Number(e.target.value) || 0; shopSave(); renderShopping(); }
+    else if (e.target.id === "shop-discount") { shopActive().discount = Number(e.target.value) || 0; shopSave(); renderShopping(); }
     else if (e.target.matches('[data-act="bought"]')) {
       const it = shopActive().items.find((i) => i.id === e.target.dataset.id);
       if (it) { it.bought = e.target.checked; shopSave(); renderShopping(); }

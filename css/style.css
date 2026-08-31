@@ -820,7 +820,8 @@ button { font: inherit; cursor: pointer; }
 .item-form input,
 .item-form select {
   min-width: 0;
-  padding: 0.6rem 0.7rem;
+  height: 2.4rem;
+  padding: 0.35rem 0.6rem;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
@@ -832,6 +833,11 @@ button { font: inherit; cursor: pointer; }
 .item-form input[name="name"],
 .item-form input[name="title"],
 .item-form input[name="url"] { flex: 1 1 10rem; }
+.item-form input[name="qty"],
+.item-form input[name="price"],
+.item-form input[name="unit"] { flex: 0 1 5.5rem; }
+.item-form .add-button { height: 2.4rem; padding: 0 1rem; }
+.app-bar input[type="number"] { width: 6rem; }
 
 .item-list {
   list-style: none;
@@ -843,6 +849,7 @@ button { font: inherit; cursor: pointer; }
 
 .item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
@@ -875,7 +882,8 @@ button { font: inherit; cursor: pointer; }
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  justify-content: flex-end;
 }
 
 .ghost {
@@ -999,6 +1007,8 @@ button { font: inherit; cursor: pointer; }
   .site-header { padding-top: 0.75rem; }
   .site-footer { padding-bottom: 0.75rem; }
   .todo-app { margin-top: 0; }
+  .item { flex-direction: column; align-items: stretch; }
+  .row-actions { width: 100%; justify-content: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) {
