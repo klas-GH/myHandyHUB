@@ -176,8 +176,6 @@ body {
   padding: clamp(2.8rem, 9vh, 6rem) 0 4rem;
 }
 
-.welcome { max-width: 39rem; animation: rise 500ms ease-out both; }
-
 .eyebrow {
   margin: 0 0 var(--space-md);
   color: var(--accent-strong);

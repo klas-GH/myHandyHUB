@@ -10,9 +10,9 @@
   <script>
     (function() {
       var stored = localStorage.getItem("_myTodoHUB.theme");
-      var theme = stored || "system";
+      var theme = stored || "light";
       var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      var effective = theme === "system" ? (dark ? "dark" : "light") : theme;
+      var effective = theme === "light" || theme === "dark" ? theme : (dark ? "dark" : "light");
       document.documentElement.setAttribute("data-theme", effective);
     })();
   </script>
@@ -33,7 +33,6 @@
     <div class="header-controls">
       <label class="theme-control" for="theme-selector">Theme</label>
       <select id="theme-selector" class="theme-selector">
-        <option value="system">System</option>
         <option value="light">Light</option>
         <option value="dark">Dark</option>
       </select>
@@ -42,12 +41,8 @@
   </header>
 
   <main class="app-shell">
-    <section class="welcome" aria-labelledby="page-title">
-      <h1 id="page-title">Your daily Handy Hub helper</h1>
-    </section>
-
     <section class="todo-app" aria-labelledby="todo-title">
-      <h2 id="todo-title">Today</h2>
+      <h2 id="todo-title">Handy Hub: Today</h2>
       <form class="todo-form" id="todo-form">
         <label class="sr-only" for="todo-input">Add a todo</label>
         <input id="todo-input" name="todo" type="text" placeholder="What needs doing?" autocomplete="off" maxlength="200" required>

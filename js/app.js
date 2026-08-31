@@ -4,12 +4,11 @@ let todos = loadTodos();
 let currentStatusFilter = "all";
 
 const themeSelector = document.querySelector("#theme-selector");
-const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 const themeColors = { light: "#f5f1e8", dark: "#141816" };
 
 function applyTheme(theme) {
   const root = document.documentElement;
-  const effectiveTheme = theme === "system" ? (systemThemeQuery.matches ? "dark" : "light") : theme;
+  const effectiveTheme = theme === "dark" ? "dark" : "light";
   root.setAttribute("data-theme", effectiveTheme);
   root.removeAttribute("data-color-scheme");
   const metaTheme = document.querySelector('meta[name="theme-color"]');
@@ -20,8 +19,8 @@ function applyTheme(theme) {
 
 function initTheme() {
   const stored = localStorage.getItem(THEME_KEY);
-  const validThemes = ["system", "light", "dark"];
-  const theme = validThemes.includes(stored) ? stored : "system";
+  const validThemes = ["light", "dark"];
+  const theme = validThemes.includes(stored) ? stored : "light";
   if (themeSelector) themeSelector.value = theme;
   applyTheme(theme);
 }
@@ -33,12 +32,6 @@ if (themeSelector) {
     applyTheme(theme);
   });
 }
-
-systemThemeQuery.addEventListener("change", () => {
-  const stored = localStorage.getItem(THEME_KEY);
-  const current = ["system", "light", "dark"].includes(stored) ? stored : "system";
-  if (current === "system") applyTheme("system");
-});
 
 initTheme();
 
