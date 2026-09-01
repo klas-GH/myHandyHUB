@@ -1114,6 +1114,151 @@ button { font: inherit; cursor: pointer; }
 .note-form .note-row select,
 .note-form .note-row input { flex: 1 1 10rem; }
 
+/* Animations & Micro-interactions */
+@keyframes fadeOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+  0% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+.todo-item.is-deleting {
+  animation: slideOut 300ms ease-out forwards;
+}
+
+.todo-item.is-completed {
+  animation: fadeOut 400ms ease-out 400ms forwards;
+}
+
+.item.is-deleting {
+  animation: slideOut 300ms ease-out forwards;
+}
+
+/* Sticky Header with hide-on-scroll */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-page);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+[data-theme="dark"] .site-header {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.site-header.is-hidden {
+  transform: translateY(-100%);
+}
+
+/* Mobile-friendly touch targets */
+@media (max-width: 48rem) {
+  .todo-check,
+  .item input[type="checkbox"] {
+    width: 1.5rem;
+    height: 1.5rem;
+    min-height: 2rem;
+    min-width: 2rem;
+  }
+
+  button, .filter-button, .clear-button {
+    min-height: 2.5rem;
+    padding: 0.6rem 0.8rem;
+  }
+
+  .ghost {
+    min-height: 2.25rem;
+    padding: 0.5rem 0.7rem;
+    font-size: 0.85rem;
+  }
+
+  .add-button {
+    min-height: 3.2rem;
+    padding: 1rem 1.2rem;
+    font-size: 1rem;
+  }
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  bottom: var(--space-md);
+  left: var(--space-md);
+  right: var(--space-md);
+  max-width: 28rem;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  margin-top: var(--space-sm);
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  animation: slideUp 300ms ease-out;
+  pointer-events: auto;
+}
+
+.toast.is-success {
+  border-left: 4px solid var(--status-ok);
+}
+
+.toast.is-error {
+  border-left: 4px solid var(--priority-high);
+}
+
+.toast.is-info {
+  border-left: 4px solid var(--accent-strong);
+}
+
+.toast.is-hiding {
+  animation: slideOut 300ms ease-out forwards;
+}
+
+.toast::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.toast.is-success::before {
+  background: var(--status-ok);
+}
+
+.toast.is-error::before {
+  background: var(--priority-high);
+}
+
+.toast.is-info::before {
+  background: var(--accent-strong);
+}
+
+/* Swipe indicator */
+.todo-item.is-swiping,
+.item.is-swiping {
+  background: var(--accent-ring);
+}
+
 @media (max-width: 600px) {
   .site-header,
   .site-footer,

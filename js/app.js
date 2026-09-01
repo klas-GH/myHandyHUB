@@ -35,7 +35,104 @@ if (themeSelector) {
 
 initTheme();
 
-const form = document.querySelector("#todo-form");
+// ==================== Micro-interactions System ====================
+
+// Toast Notifications
+const toastContainer = document.querySelector("#toast-container");
+
+function showToast(message, type = "info", duration = 3000) {
+  if (!toastContainer) return;
+  const toast = document.createElement("div");
+  toast.className = `toast is-${type}`;
+  toast.textContent = message;
+  toast.setAttribute("role", "status");
+  toastContainer.appendChild(toast);
+  
+  if (duration > 0) {
+    setTimeout(() => {
+      toast.classList.add("is-hiding");
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+  
+  return toast;
+}
+
+// Sticky Header with Hide-on-Scroll
+let lastScrollTop = 0;
+const header = document.querySelector(".site-header");
+
+function initStickyHeader() {
+  if (!header) return;
+  window.addEventListener("scroll", () => {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    if (scrollTop > lastScrollTop + 10) {
+      // Scrolling down - hide
+      header.classList.add("is-hidden");
+    } else if (scrollTop < lastScrollTop - 10) {
+      // Scrolling up - show
+      header.classList.remove("is-hidden");
+    }
+    lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+  });
+}
+
+initStickyHeader();
+
+// Swipe-to-Delete Handler
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeElement = null;
+let isSwipingDelete = false;
+
+function handleSwipeStart(e, listSelector, itemSelector) {
+  const touch = e.touches?.[0];
+  if (!touch) return;
+  swipeStartX = touch.clientX;
+  swipeStartY = touch.clientY;
+  swipeElement = e.target.closest(itemSelector);
+  isSwipingDelete = false;
+}
+
+function handleSwipeMove(e, listSelector, itemSelector) {
+  if (!swipeElement || !e.touches) return;
+  const touch = e.touches[0];
+  const deltaX = touch.clientX - swipeStartX;
+  const deltaY = touch.clientY - swipeStartY;
+  
+  if (Math.abs(deltaY) > Math.abs(deltaX)) return; // Vertical scroll
+  
+  if (deltaX < -30) {
+    isSwipingDelete = true;
+    swipeElement.classList.add("is-swiping");
+  } else {
+    swipeElement.classList.remove("is-swiping");
+  }
+}
+
+function handleSwipeEnd(e, listSelector, itemSelector, deleteHandler) {
+  if (!swipeElement) return;
+  swipeElement.classList.remove("is-swiping");
+  
+  if (isSwipingDelete) {
+    deleteHandler(swipeElement);
+  }
+  
+  swipeElement = null;
+  isSwipingDelete = false;
+}
+
+// Animation completion handler
+function animateItemCompletion(item, onAnimationComplete) {
+  item.classList.add("is-completed");
+  setTimeout(() => {
+    if (onAnimationComplete) onAnimationComplete();
+  }, 400);
+}
+
+// ============================================================
+
+
 const input = document.querySelector("#todo-input");
 const priorityInput = document.querySelector("#todo-priority");
 const categoryInput = document.querySelector("#todo-category");
@@ -500,6 +597,26 @@ function getDragAfterElement(container, y) {
   return closest;
 }
 
+// Swipe-to-delete for todo items
+list.addEventListener("touchstart", (e) => {
+  handleSwipeStart(e, ".todo-list", ".todo-item");
+}, { passive: true });
+
+list.addEventListener("touchmove", (e) => {
+  handleSwipeMove(e, ".todo-list", ".todo-item");
+}, { passive: true });
+
+list.addEventListener("touchend", (e) => {
+  handleSwipeEnd(e, ".todo-list", ".todo-item", (item) => {
+    const todoId = item.dataset.id;
+    todos = todos.filter((todo) => todo.id !== todoId);
+    saveTodos();
+    item.classList.add("is-deleting");
+    setTimeout(() => render(), 300);
+    showToast("Todo deleted", "info", 2000);
+  });
+}, { passive: true });
+
 function showStatus(message, type) {
   if (!statusMessage) return;
   statusMessage.textContent = message;
@@ -508,6 +625,10 @@ function showStatus(message, type) {
     statusMessage.classList.remove("is-hidden");
   } else {
     statusMessage.classList.add("is-hidden");
+  }
+  // Also show as toast
+  if (message) {
+    showToast(message, type || "info", 3000);
   }
 }
 
@@ -985,6 +1106,28 @@ function initShopping() {
       if (it) { it.bought = e.target.checked; shopSave(); renderShopping(); }
     }
   });
+  
+  // Swipe-to-delete for shopping items
+  root.addEventListener("touchstart", (e) => {
+    handleSwipeStart(e, ".item-list", ".item");
+  }, { passive: true });
+  
+  root.addEventListener("touchmove", (e) => {
+    handleSwipeMove(e, ".item-list", ".item");
+  }, { passive: true });
+  
+  root.addEventListener("touchend", (e) => {
+    handleSwipeEnd(e, ".item-list", ".item", (item) => {
+      const list = shopActive();
+      const itemId = item.dataset.id;
+      list.items = list.items.filter((i) => i.id !== itemId);
+      shopSave();
+      item.classList.add("is-deleting");
+      setTimeout(() => renderShopping(), 300);
+      showToast("Item deleted", "info", 2000);
+    });
+  }, { passive: true });
+  
   renderShopping();
 }
 
@@ -1110,6 +1253,27 @@ function initLinks() {
   root.addEventListener("change", (e) => {
     if (e.target.id === "link-filter") { links.filter = e.target.value; renderLinks(); }
   });
+  
+  // Swipe-to-delete for links
+  root.addEventListener("touchstart", (e) => {
+    handleSwipeStart(e, ".item-list", ".item");
+  }, { passive: true });
+  
+  root.addEventListener("touchmove", (e) => {
+    handleSwipeMove(e, ".item-list", ".item");
+  }, { passive: true });
+  
+  root.addEventListener("touchend", (e) => {
+    handleSwipeEnd(e, ".item-list", ".item", (item) => {
+      const linkId = item.dataset.id;
+      links.data = links.data.filter((x) => x.id !== linkId);
+      linksSave();
+      item.classList.add("is-deleting");
+      setTimeout(() => renderLinks(), 300);
+      showToast("Link deleted", "info", 2000);
+    });
+  }, { passive: true });
+  
   renderLinks();
 }
 
@@ -1220,6 +1384,27 @@ function initNotes() {
   root.addEventListener("input", (e) => {
     if (e.target.id === "note-search") { notes.q = e.target.value; renderNotes(); }
   });
+  
+  // Swipe-to-delete for notes
+  root.addEventListener("touchstart", (e) => {
+    handleSwipeStart(e, ".item-list", ".item");
+  }, { passive: true });
+  
+  root.addEventListener("touchmove", (e) => {
+    handleSwipeMove(e, ".item-list", ".item");
+  }, { passive: true });
+  
+  root.addEventListener("touchend", (e) => {
+    handleSwipeEnd(e, ".item-list", ".item", (item) => {
+      const noteId = item.dataset.id;
+      notes.data = notes.data.filter((x) => x.id !== noteId);
+      notesSave();
+      item.classList.add("is-deleting");
+      setTimeout(() => renderNotes(), 300);
+      showToast("Note deleted", "info", 2000);
+    });
+  }, { passive: true });
+  
   renderNotes();
 }
 
