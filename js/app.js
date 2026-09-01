@@ -329,8 +329,8 @@ function render() {
     
     const itemsHtml = groupTodos.map((todo) => {
       if (todo.id === editingId) {
-        // Skip rendering in groups, we'll handle editing separately
-        return "";
+        // Render placeholder for edit form
+        return `<li class="todo-item" data-id="${todo.id}"></li>`;
       }
       
       const dueLabel = getDueDateLabel(todo);
@@ -396,7 +396,8 @@ function render() {
     
     const itemsHtml = groupTodos.map((todo) => {
       if (todo.id === editingId) {
-        return ""; // Will be handled in edit form rendering
+        // Render placeholder for edit form
+        return `<li class="todo-item" data-id="${todo.id}"></li>`;
       }
       
       const dueLabel = getDueDateLabel(todo);
@@ -429,6 +430,15 @@ function render() {
   });
   
   list.innerHTML = groupHTML;
+  
+  // If a todo is being edited, render the edit form for it
+  if (editingId) {
+    const editItem = list.querySelector(`[data-id="${editingId}"]`);
+    const editingTodo = todos.find((todo) => todo.id === editingId);
+    if (editItem && editingTodo) {
+      renderEditForm(editItem, editingTodo);
+    }
+  }
   
   totalCount.textContent = todos.length;
   activeCount.textContent = todos.filter((todo) => !todo.completed).length;
