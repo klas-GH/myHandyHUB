@@ -1,6 +1,6 @@
 {
-  "name": "_myHandyHub",
-  "short_name": "HandyHub",
+  "name": "myHandyHub",
+  "short_name": "myHandyHub",
   "description": "A calm, focused space for the things you want to get done.",
   "id": "./",
   "lang": "en",

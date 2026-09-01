@@ -1,5 +1,5 @@
-const STORAGE_KEY = "_myTodoHUB.todos";
-const THEME_KEY = "_myTodoHUB.theme";
+const STORAGE_KEY = "myHandyHub.todos";
+const THEME_KEY = "myHandyHub.theme";
 let todos = loadTodos();
 let currentStatusFilter = "all";
 
@@ -513,7 +513,7 @@ function showStatus(message, type) {
 
 function exportBackup() {
   const backup = {
-    app: "_myTodoHUB",
+    app: "myHandyHub",
     formatVersion: 1,
     exportedAt: new Date().toISOString(),
     todos: todos.map((todo) => ({
@@ -530,7 +530,7 @@ function exportBackup() {
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const date = new Date().toISOString().slice(0, 10);
-  const filename = `_myTodoHUB-backup-${date}.json`;
+  const filename = `myHandyHub-backup-${date}.json`;
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
@@ -553,7 +553,7 @@ function normalizeImportedTodo(todo, index) {
 
 function validateBackup(data) {
   if (!data || typeof data !== "object") return "Invalid backup file.";
-  if (data.app !== "_myTodoHUB") return "This backup is not from _myTodoHUB.";
+  if (data.app !== "myHandyHub") return "This backup is not from myHandyHub.";
   if (typeof data.formatVersion !== "number") return "Invalid backup format version.";
   if (!Array.isArray(data.todos)) return "Invalid backup: todos must be an array.";
   if (data.todos.length === 0) return null;
