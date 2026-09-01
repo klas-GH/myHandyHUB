@@ -913,7 +913,7 @@ function initShopping() {
 
 const LINKS_KEY = "_myHandyHub.links";
 const LINK_CATS = ["Work", "Shopping", "Finance", "Travel", "Tools", "Other"];
-const links = { inited: false, data: null, filter: "all", q: "" };
+const links = { inited: false, data: null, filter: "all", q: "", editingId: null };
 
 function linksLoad() { if (!links.data) links.data = storeGet(LINKS_KEY, []); return links.data; }
 function linksSave() { storeSet(LINKS_KEY, links.data); }
@@ -930,14 +930,24 @@ function renderLinks() {
     return true;
   }).sort((a, b) => (b.favorite - a.favorite) || a.name.localeCompare(b.name));
 
+  const editing = links.editingId ? links.data.find((x) => x.id === links.editingId) : null;
+
   root.innerHTML = `
     <form id="link-form" class="item-form">
-      <input name="url" placeholder="https://…" required>
-      <input name="name" placeholder="Name" required>
-      <select name="category">${LINK_CATS.map((c) => `<option>${c}</option>`).join("")}</select>
-      <input name="tags" placeholder="tags (comma)">
-      <input name="notes" placeholder="notes">
-      <button type="submit" class="add-button">Add</button>
+      <input name="url" placeholder="https://…" value="${editing ? esc(editing.url) : ""}" required pattern="https?://.+" title="URL must start with http(s)://">
+      <input name="name" placeholder="Name" value="${editing ? esc(editing.name) : ""}" required>
+      <select name="category">
+        <option>Work</option>
+        <option>Shopping</option>
+        <option>Finance</option>
+        <option>Travel</option>
+        <option>Tools</option>
+        <option>Other</option>
+      </select>
+      <input name="tags" placeholder="tags (comma)" value="${editing ? esc((editing.tags || []).join(", ")) : ""}">
+      <input name="notes" placeholder="notes" value="${editing ? esc(editing.notes || "") : ""}">
+      <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
+      ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
     </form>
     <div class="app-bar">
       <input id="link-search" placeholder="Search…" value="${esc(links.q)}">
@@ -978,8 +988,21 @@ function initLinks() {
     e.preventDefault();
     const f = e.target;
     const url = f.url.value.trim();
-    if (!/^https?:\/\//i.test(url)) { alert("Enter a full URL (https://…)"); return; }
-    links.data.push({ id: uid(), name: f.name.value.trim() || domainOf(url), url, category: f.category.value, tags: f.tags.value.split(",").map((t) => t.trim()).filter(Boolean), notes: f.notes.value.trim(), favorite: false, date: new Date().toISOString() });
+    if (!/^https?:\/\//i.test(url)) { f.url.setCustomValidity("URL must start with http(s)://"); f.url.reportValidity(); return; }
+    f.url.setCustomValidity("");
+    if (links.editingId) {
+      const item = links.data.find((x) => x.id === links.editingId);
+      if (item) {
+        item.name = f.name.value.trim() || domainOf(url);
+        item.url = url;
+        item.category = f.category.value;
+        item.tags = f.tags.value.split(",").map((t) => t.trim()).filter(Boolean);
+        item.notes = f.notes.value.trim();
+      }
+      links.editingId = null;
+    } else {
+      links.data.push({ id: uid(), name: f.name.value.trim() || domainOf(url), url, category: f.category.value, tags: f.tags.value.split(",").map((t) => t.trim()).filter(Boolean), notes: f.notes.value.trim(), favorite: false, date: new Date().toISOString() });
+    }
     linksSave(); renderLinks();
   });
   root.addEventListener("click", async (e) => {
@@ -993,10 +1016,12 @@ function initLinks() {
     else if (act === "fav") { l.favorite = !l.favorite; linksSave(); renderLinks(); }
     else if (act === "del") { links.data = links.data.filter((x) => x.id !== l.id); linksSave(); renderLinks(); }
     else if (act === "edit") {
-      const name = prompt("Name:", l.name);
-      const url = prompt("URL:", l.url);
-      const tags = prompt("Tags (comma):", (l.tags || []).join(", "));
-      if (name != null && url != null && /^https?:\/\//i.test(url.trim())) { l.name = name.trim() || domainOf(url); l.url = url.trim(); l.tags = tags.split(",").map((t) => t.trim()).filter(Boolean); linksSave(); renderLinks(); }
+      links.editingId = l.id;
+      renderLinks();
+    }
+    else if (act === "cancel-edit") {
+      links.editingId = null;
+      renderLinks();
     }
   });
   root.addEventListener("input", (e) => {
@@ -1010,7 +1035,7 @@ function initLinks() {
 
 const NOTES_KEY = "_myHandyHub.notes";
 const NOTE_COLORS = ["", "#fde8e3", "#e3f0fd", "#eafde3", "#f3e3fd"];
-const notes = { inited: false, data: null, favOnly: false, q: "" };
+const notes = { inited: false, data: null, favOnly: false, q: "", editingId: null };
 
 function notesLoad() { if (!notes.data) notes.data = storeGet(NOTES_KEY, []); return notes.data; }
 function notesSave() { storeSet(NOTES_KEY, notes.data); }
@@ -1029,14 +1054,17 @@ function renderNotes() {
     return true;
   }).sort((a, b) => (b.favorite - a.favorite) || (b.updated || "").localeCompare(a.updated || ""));
 
+  const editing = notes.editingId ? notes.data.find((n) => n.id === notes.editingId) : null;
+
   root.innerHTML = `
     <form id="note-form" class="item-form note-form">
-      <input name="title" class="note-title" placeholder="Title" required>
-      <textarea name="text" class="note-text" placeholder="Note…" rows="4"></textarea>
+      <input name="title" class="note-title" placeholder="Title" value="${editing ? esc(editing.title) : ""}" required>
+      <textarea name="text" class="note-text" placeholder="Note…" rows="4">${editing ? esc(editing.text || "") : ""}</textarea>
       <div class="note-row">
-        <select name="color">${NOTE_COLORS.map((c, i) => `<option value="${i}" ${i === 0 ? "selected" : ""}>${c ? "Color " + i : "Default"}</option>`).join("")}</select>
-        <input name="tags" placeholder="tags">
-        <button type="submit" class="add-button">Add</button>
+        <select name="color">${NOTE_COLORS.map((c, i) => `<option value="${i}" ${(editing ? editing.color : 0) === i ? "selected" : ""}>${c ? "Color " + i : "Default"}</option>`).join("")}</select>
+        <input name="tags" placeholder="tags" value="${editing ? esc((editing.tags || []).join(", ")) : ""}">
+        <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
+        ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
       </div>
     </form>
     <div class="app-bar">
@@ -1072,7 +1100,19 @@ function initNotes() {
     e.preventDefault();
     const f = e.target;
     const now = new Date().toISOString();
-    notes.data.push({ id: uid(), title: f.title.value.trim(), text: f.text.value.trim(), color: Number(f.color.value) || 0, tags: f.tags.value.split(",").map((t) => t.trim()).filter(Boolean), favorite: false, created: now, updated: now });
+    if (notes.editingId) {
+      const item = notes.data.find((x) => x.id === notes.editingId);
+      if (item) {
+        item.title = f.title.value.trim();
+        item.text = f.text.value.trim();
+        item.color = Number(f.color.value) || 0;
+        item.tags = f.tags.value.split(",").map((t) => t.trim()).filter(Boolean);
+        item.updated = now;
+      }
+      notes.editingId = null;
+    } else {
+      notes.data.push({ id: uid(), title: f.title.value.trim(), text: f.text.value.trim(), color: Number(f.color.value) || 0, tags: f.tags.value.split(",").map((t) => t.trim()).filter(Boolean), favorite: false, created: now, updated: now });
+    }
     notesSave(); renderNotes();
   });
   root.addEventListener("click", (e) => {
@@ -1085,12 +1125,15 @@ function initNotes() {
     if (act === "fav") { n.favorite = !n.favorite; notesSave(); renderNotes(); }
     else if (act === "del") { notes.data = notes.data.filter((x) => x.id !== n.id); notesSave(); renderNotes(); }
     else if (act === "edit") {
-      const title = prompt("Title:", n.title);
-      const text = prompt("Note:", n.text);
-      const tags = prompt("Tags:", (n.tags || []).join(", "));
-      if (title != null) { n.title = title.trim(); if (text != null) n.text = text.trim(); if (tags != null) n.tags = tags.split(",").map((t) => t.trim()).filter(Boolean); n.updated = new Date().toISOString(); notesSave(); renderNotes(); }
+      notes.editingId = n.id;
+      renderNotes();
+    }
+    else if (act === "cancel-edit") {
+      notes.editingId = null;
+      renderNotes();
     }
   });
+
   root.addEventListener("input", (e) => {
     if (e.target.id === "note-search") { notes.q = e.target.value; renderNotes(); }
   });
