@@ -79,6 +79,58 @@ function initStickyHeader() {
 
 initStickyHeader();
 
+// ==================== Smart Grouping System ====================
+
+const groupCollapseState = JSON.parse(localStorage.getItem("myHandyHub.groupCollapse") || "{}");
+
+function saveGroupState() {
+  localStorage.setItem("myHandyHub.groupCollapse", JSON.stringify(groupCollapseState));
+}
+
+function toggleGroupCollapse(groupId) {
+  groupCollapseState[groupId] = !groupCollapseState[groupId];
+  saveGroupState();
+}
+
+function isGroupCollapsed(groupId) {
+  return groupCollapseState[groupId] === true;
+}
+
+function renderGroupHeader(groupName, itemCount, groupId) {
+  const isCollapsed = isGroupCollapsed(groupId);
+  return `<div class="group-header ${isCollapsed ? 'is-collapsed' : ''}" data-group-id="${groupId}" data-toggle="group-header">
+    ${esc(groupName)} <span class="group-badge">${itemCount}</span>
+  </div>`;
+}
+
+function renderGroupContent(items, renderItemFn, groupId, emptyMessage = "No items") {
+  const isCollapsed = isGroupCollapsed(groupId);
+  const content = items.length ? items.map(renderItemFn).join("") : `<div class="group-empty">${emptyMessage}</div>`;
+  return `<div class="group-content ${isCollapsed ? 'is-collapsed' : ''}" data-group-id="${groupId}">
+    ${content}
+  </div>`;
+}
+
+function initGroupCollapse() {
+  document.addEventListener("click", (e) => {
+    const header = e.target.closest("[data-toggle='group-header']");
+    if (!header) return;
+    const groupId = header.dataset.groupId;
+    if (groupId) {
+      toggleGroupCollapse(groupId);
+      header.classList.toggle("is-collapsed");
+      const content = document.querySelector(`[data-group-id="${groupId}"].group-content`);
+      if (content) {
+        content.classList.toggle("is-collapsed");
+      }
+    }
+  });
+}
+
+initGroupCollapse();
+
+// ============================================================
+
 // Swipe-to-Delete Handler
 let swipeStartX = 0;
 let swipeStartY = 0;
@@ -134,6 +186,7 @@ function animateItemCompletion(item, onAnimationComplete) {
 
 
 const input = document.querySelector("#todo-input");
+const form = document.querySelector("#todo-form");
 const priorityInput = document.querySelector("#todo-priority");
 const categoryInput = document.querySelector("#todo-category");
 const dueInput = document.querySelector("#todo-due");
@@ -223,86 +276,90 @@ function getDueDateLabel(todo) {
   return todo.dueDate;
 }
 
+// Group todos by due date for smart display
+function getTodoDueDateGroup(todo) {
+  if (!todo.dueDate) return "noDueDate";
+  const today = formatDateISO(new Date());
+  const tomorrow = formatDateISO(new Date(Date.now() + 86400000));
+  const week = formatDateISO(new Date(Date.now() + 7 * 86400000));
+  
+  if (todo.dueDate < today) return "overdue";
+  if (todo.dueDate === today) return "today";
+  if (todo.dueDate === tomorrow) return "tomorrow";
+  if (todo.dueDate <= week) return "thisWeek";
+  return "later";
+}
+
+const todoGroupOrder = ["overdue", "today", "tomorrow", "thisWeek", "later", "noDueDate"];
+const todoGroupLabels = {
+  overdue: "🔴 Overdue",
+  today: "⭐ Today",
+  tomorrow: "📅 Tomorrow",
+  thisWeek: "📆 This Week",
+  later: "🗓️ Later",
+  noDueDate: "📌 No Due Date"
+};
+
 function render() {
   const filteredTodos = visibleTodos();
-  list.replaceChildren();
-
-  filteredTodos.forEach((todo) => {
-    const item = document.createElement("li");
-    item.className = `todo-item${todo.completed ? " is-completed" : ""}`;
-    item.dataset.id = todo.id;
-
-    if (item.dataset.id === editingId) {
-      renderEditForm(item, todo);
-      list.append(item);
-      return;
-    }
-
-    const checkbox = document.createElement("input");
-    checkbox.className = "todo-check";
-    checkbox.type = "checkbox";
-    checkbox.checked = todo.completed;
-    checkbox.setAttribute("aria-label", `Mark ${todo.text} as ${todo.completed ? "active" : "completed"}`);
-
-    const details = document.createElement("div");
-    details.className = "todo-details";
-    const text = document.createElement("span");
-    text.className = "todo-text";
-    text.textContent = todo.text;
-
-    const meta = document.createElement("span");
-    meta.className = "todo-meta";
-    const category = document.createElement("span");
-    category.className = "todo-badge";
-    category.textContent = capitalize(todo.category);
-    const priority = document.createElement("span");
-    priority.className = `todo-badge priority-indicator priority-${todo.priority}`;
-    priority.textContent = `${capitalize(todo.priority)} priority`;
-    meta.append(category, priority);
-    const dueLabel = getDueDateLabel(todo);
-    if (dueLabel) {
-      const dueBadge = document.createElement("span");
-      dueBadge.className = `todo-badge${todo.dueDate < formatDateISO(new Date()) ? " is-overdue" : todo.dueDate === formatDateISO(new Date()) ? " is-due-today" : " is-upcoming"}`;
-      dueBadge.textContent = dueLabel;
-      meta.append(dueBadge);
-    }
-    details.append(text, meta);
-
-    const actions = document.createElement("span");
-    actions.className = "todo-actions";
-    const moveUpButton = document.createElement("button");
-    moveUpButton.className = "move-button";
-    moveUpButton.type = "button";
-    moveUpButton.dataset.action = "move-up";
-    moveUpButton.setAttribute("aria-label", `Move ${todo.text} up`);
-    moveUpButton.innerHTML = "&#9650;";
-    const moveDownButton = document.createElement("button");
-    moveDownButton.className = "move-button";
-    moveDownButton.type = "button";
-    moveDownButton.dataset.action = "move-down";
-    moveDownButton.setAttribute("aria-label", `Move ${todo.text} down`);
-    moveDownButton.innerHTML = "&#9660;";
-    const editButton = document.createElement("button");
-    editButton.className = "edit-button";
-    editButton.type = "button";
-    editButton.dataset.action = "edit";
-    editButton.setAttribute("aria-label", `Edit ${todo.text}`);
-    editButton.textContent = "Edit";
-    const deleteButton = document.createElement("button");
-    deleteButton.className = "delete-button";
-    deleteButton.type = "button";
-    deleteButton.dataset.action = "delete";
-    deleteButton.setAttribute("aria-label", `Delete ${todo.text}`);
-    deleteButton.innerHTML = "&#10005;";
-
-    actions.append(moveUpButton, moveDownButton, editButton, deleteButton);
-    item.append(checkbox, details, actions);
-    list.append(item);
+  
+  // Group todos by due date
+  const grouped = {};
+  todoGroupOrder.forEach(group => {
+    grouped[group] = [];
   });
-
-  totalCount.textContent = todos.length;
-  activeCount.textContent = todos.filter((todo) => !todo.completed).length;
-  emptyState.classList.toggle("is-hidden", filteredTodos.length > 0);
+  
+  filteredTodos.forEach((todo) => {
+    const group = getTodoDueDateGroup(todo);
+    if (grouped[group]) {
+      grouped[group].push(todo);
+    }
+  });
+  
+  // Render HTML for all groups
+  let html = "";
+  
+  todoGroupOrder.forEach((groupKey) => {
+    const groupTodos = grouped[groupKey];
+    const groupLabel = todoGroupLabels[groupKey];
+    
+    if (groupTodos.length === 0) return; // Skip empty groups
+    
+    html += renderGroupHeader(groupLabel, groupTodos.length, `todo-${groupKey}`);
+    
+    const itemsHtml = groupTodos.map((todo) => {
+      if (todo.id === editingId) {
+        // Skip rendering in groups, we'll handle editing separately
+        return "";
+      }
+      
+      const dueLabel = getDueDateLabel(todo);
+      const dueBadgeClass = todo.dueDate < formatDateISO(new Date()) ? " is-overdue" : 
+                            todo.dueDate === formatDateISO(new Date()) ? " is-due-today" : " is-upcoming";
+      
+      return `<li class="todo-item${todo.completed ? " is-completed" : ""}" data-id="${todo.id}">
+        <input class="todo-check" type="checkbox" ${todo.completed ? "checked" : ""} aria-label="Mark ${esc(todo.text)} as ${todo.completed ? "active" : "completed"}">
+        <div class="todo-details">
+          <span class="todo-text">${esc(todo.text)}</span>
+          <span class="todo-meta">
+            <span class="todo-badge">${capitalize(todo.category)}</span>
+            <span class="todo-badge priority-indicator priority-${todo.priority}">${capitalize(todo.priority)} priority</span>
+            ${dueLabel ? `<span class="todo-badge${dueBadgeClass}">${esc(dueLabel)}</span>` : ""}
+          </span>
+        </div>
+        <span class="todo-actions">
+          <button class="move-button" type="button" data-action="move-up" aria-label="Move ${esc(todo.text)} up">&#9650;</button>
+          <button class="move-button" type="button" data-action="move-down" aria-label="Move ${esc(todo.text)} down">&#9660;</button>
+          <button class="edit-button" type="button" data-action="edit" aria-label="Edit ${esc(todo.text)}">Edit</button>
+          <button class="delete-button" type="button" data-action="delete" aria-label="Delete ${esc(todo.text)}">&#10005;</button>
+        </span>
+      </li>`;
+    }).join("");
+    
+    html += renderGroupContent(groupTodos, () => "", `todo-${groupKey}`, "");
+    // Actually, we need to insert the HTML differently
+  });
+  
   if (filteredTodos.length === 0) {
     if (todos.length === 0) {
       emptyState.textContent = "No todos yet. Add one small thing to begin.";
@@ -315,7 +372,66 @@ function render() {
     } else if (currentStatusFilter === "completed") {
       emptyState.textContent = "No completed todos yet.";
     }
+    emptyState.classList.remove("is-hidden");
+    list.innerHTML = "";
+    totalCount.textContent = todos.length;
+    activeCount.textContent = todos.filter((todo) => !todo.completed).length;
+    clearCompleted.disabled = !todos.some((todo) => todo.completed);
+    return;
   }
+  
+  emptyState.classList.add("is-hidden");
+  
+  // Build HTML with groups
+  let groupHTML = "";
+  
+  todoGroupOrder.forEach((groupKey) => {
+    const groupTodos = grouped[groupKey];
+    if (groupTodos.length === 0) return;
+    
+    const groupLabel = todoGroupLabels[groupKey];
+    const isCollapsed = isGroupCollapsed(`todo-${groupKey}`);
+    
+    groupHTML += renderGroupHeader(groupLabel, groupTodos.length, `todo-${groupKey}`);
+    
+    const itemsHtml = groupTodos.map((todo) => {
+      if (todo.id === editingId) {
+        return ""; // Will be handled in edit form rendering
+      }
+      
+      const dueLabel = getDueDateLabel(todo);
+      const dueBadgeClass = todo.dueDate < formatDateISO(new Date()) ? " is-overdue" : 
+                            todo.dueDate === formatDateISO(new Date()) ? " is-due-today" : " is-upcoming";
+      
+      return `<li class="todo-item${todo.completed ? " is-completed" : ""}" data-id="${todo.id}">
+        <input class="todo-check" type="checkbox" ${todo.completed ? "checked" : ""} aria-label="Mark ${esc(todo.text)} as ${todo.completed ? "active" : "completed"}">
+        <div class="todo-details">
+          <span class="todo-text">${esc(todo.text)}</span>
+          <span class="todo-meta">
+            <span class="todo-badge">${capitalize(todo.category)}</span>
+            <span class="todo-badge priority-indicator priority-${todo.priority}">${capitalize(todo.priority)} priority</span>
+            ${dueLabel ? `<span class="todo-badge${dueBadgeClass}">${esc(dueLabel)}</span>` : ""}
+          </span>
+        </div>
+        <span class="todo-actions">
+          <button class="move-button" type="button" data-action="move-up" aria-label="Move ${esc(todo.text)} up">&#9650;</button>
+          <button class="move-button" type="button" data-action="move-down" aria-label="Move ${esc(todo.text)} down">&#9660;</button>
+          <button class="edit-button" type="button" data-action="edit" aria-label="Edit ${esc(todo.text)}">Edit</button>
+          <button class="delete-button" type="button" data-action="delete" aria-label="Delete ${esc(todo.text)}">&#10005;</button>
+        </span>
+      </li>`;
+    }).join("");
+    
+    const groupContentClass = isCollapsed ? " is-collapsed" : "";
+    groupHTML += `<div class="group-content${groupContentClass}" data-group-id="todo-${groupKey}">
+      ${itemsHtml}
+    </div>`;
+  });
+  
+  list.innerHTML = groupHTML;
+  
+  totalCount.textContent = todos.length;
+  activeCount.textContent = todos.filter((todo) => !todo.completed).length;
   clearCompleted.disabled = !todos.some((todo) => todo.completed);
 }
 
@@ -958,21 +1074,54 @@ function renderShopping() {
       <label class="muted">Discount <input id="shop-discount" type="number" step="0.01" min="0" value="${list.discount || ""}"></label>
     </div>
     <ul class="item-list">
-      ${items.length ? items.map((it) => `
-        <li class="item ${it.bought ? "is-bought" : ""}">
-          <label class="item-main">
-            <input type="checkbox" data-act="bought" data-id="${it.id}" ${it.bought ? "checked" : ""}>
-            <span class="item-name">${esc(it.name)}</span>
-            <span class="muted">${esc(it.qty)} ${esc(it.unit)}</span>
-            <span class="muted">${money(it.price)}/u</span>
-            <span class="item-total">${money(Number(it.qty) * Number(it.price))}</span>
-            ${it.bought ? "" : priceDelta(it.name, it.price)}
-          </label>
-          <span class="row-actions">
-            <button class="ghost" data-act="edit" data-id="${it.id}">Edit</button>
-            <button class="ghost danger" data-act="del" data-id="${it.id}">Del</button>
-          </span>
-        </li>`).join("") : '<li class="empty">No items yet.</li>'}
+      ${items.length ? (() => {
+        // Group items by category
+        const grouped = {};
+        SHOP_CATS.forEach(cat => {
+          grouped[cat] = [];
+        });
+        items.forEach(it => {
+          const cat = it.category || "Other";
+          if (grouped[cat]) {
+            grouped[cat].push(it);
+          }
+        });
+        
+        let html = "";
+        SHOP_CATS.forEach(cat => {
+          const catItems = grouped[cat];
+          if (catItems.length === 0) return;
+          
+          const groupId = `shop-${list.id}-${cat}`;
+          const isCollapsed = isGroupCollapsed(groupId);
+          
+          html += `<div class="group-header ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}" data-toggle="group-header">
+            ${esc(cat)} <span class="group-badge">${catItems.length}</span>
+          </div>`;
+          
+          const itemsHtml = catItems.map((it) => `
+            <li class="item ${it.bought ? "is-bought" : ""}">
+              <label class="item-main">
+                <input type="checkbox" data-act="bought" data-id="${it.id}" ${it.bought ? "checked" : ""}>
+                <span class="item-name">${esc(it.name)}</span>
+                <span class="muted">${esc(it.qty)} ${esc(it.unit)}</span>
+                <span class="muted">${money(it.price)}/u</span>
+                <span class="item-total">${money(Number(it.qty) * Number(it.price))}</span>
+                ${it.bought ? "" : priceDelta(it.name, it.price)}
+              </label>
+              <span class="row-actions">
+                <button class="ghost" data-act="edit" data-id="${it.id}">Edit</button>
+                <button class="ghost danger" data-act="del" data-id="${it.id}">Del</button>
+              </span>
+            </li>`).join("");
+          
+          html += `<div class="group-content ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}">
+            ${itemsHtml}
+          </div>`;
+        });
+        
+        return html;
+      })() : '<li class="empty">No items yet.</li>'}
     </ul>
     <div class="totals">
       <span>Items: <strong>${items.length}</strong></span>
@@ -1178,22 +1327,55 @@ function renderLinks() {
       </select>
     </div>
     <ul class="item-list">
-      ${filtered.length ? filtered.map((l) => `
-        <li class="item">
-          <div class="item-main">
-            <span class="item-name">${l.favorite ? "⭐ " : ""}${esc(l.name)}</span>
-            <span class="muted">${esc(domainOf(l.url))}</span>
-            ${(l.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
-          </div>
-          <span class="row-actions">
-            <a class="ghost" href="${esc(l.url)}" target="_blank" rel="noopener">Open</a>
-            <button class="ghost" data-act="copy" data-id="${l.id}">Copy</button>
-            <button class="ghost" data-act="share" data-id="${l.id}">Share</button>
-            <button class="ghost" data-act="fav" data-id="${l.id}">${l.favorite ? "Unfav" : "Fav"}</button>
-            <button class="ghost" data-act="edit" data-id="${l.id}">Edit</button>
-            <button class="ghost danger" data-act="del" data-id="${l.id}">Del</button>
-          </span>
-        </li>`).join("") : '<li class="empty">No links yet.</li>'}
+      ${filtered.length ? (() => {
+        // Group links by category
+        const grouped = {};
+        LINK_CATS.forEach(cat => {
+          grouped[cat] = [];
+        });
+        filtered.forEach(l => {
+          const cat = l.category || "Other";
+          if (grouped[cat]) {
+            grouped[cat].push(l);
+          }
+        });
+        
+        let html = "";
+        LINK_CATS.forEach(cat => {
+          const catLinks = grouped[cat];
+          if (catLinks.length === 0) return;
+          
+          const groupId = `links-${cat}`;
+          const isCollapsed = isGroupCollapsed(groupId);
+          
+          html += `<div class="group-header ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}" data-toggle="group-header">
+            ${esc(cat)} <span class="group-badge">${catLinks.length}</span>
+          </div>`;
+          
+          const itemsHtml = catLinks.map((l) => `
+            <li class="item">
+              <div class="item-main">
+                <span class="item-name">${l.favorite ? "⭐ " : ""}${esc(l.name)}</span>
+                <span class="muted">${esc(domainOf(l.url))}</span>
+                ${(l.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+              </div>
+              <span class="row-actions">
+                <a class="ghost" href="${esc(l.url)}" target="_blank" rel="noopener">Open</a>
+                <button class="ghost" data-act="copy" data-id="${l.id}">Copy</button>
+                <button class="ghost" data-act="share" data-id="${l.id}">Share</button>
+                <button class="ghost" data-act="fav" data-id="${l.id}">${l.favorite ? "Unfav" : "Fav"}</button>
+                <button class="ghost" data-act="edit" data-id="${l.id}">Edit</button>
+                <button class="ghost danger" data-act="del" data-id="${l.id}">Del</button>
+              </span>
+            </li>`).join("");
+          
+          html += `<div class="group-content ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}">
+            ${itemsHtml}
+          </div>`;
+        });
+        
+        return html;
+      })() : '<li class="empty">No links yet.</li>'}
     </ul>
   `;
   
@@ -1316,20 +1498,76 @@ function renderNotes() {
       <button class="ghost" data-act="favonly">${notes.favOnly ? "All" : "Favorites"}</button>
     </div>
     <ul class="item-list">
-      ${filtered.length ? filtered.map((n) => `
-        <li class="item note" style="${noteStyle(n)}">
-          <div class="item-main">
-            <span class="item-name">${n.favorite ? "📌 " : ""}${esc(n.title)}</span>
-            <span class="muted">${esc((n.text || "").slice(0, 80))}</span>
-            ${(n.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
-            <span class="muted tiny">${n.updated ? new Date(n.updated).toLocaleDateString() : ""}</span>
-          </div>
-          <span class="row-actions">
-            <button class="ghost" data-act="fav" data-id="${n.id}">${n.favorite ? "Unpin" : "Pin"}</button>
-            <button class="ghost" data-act="edit" data-id="${n.id}">Edit</button>
-            <button class="ghost danger" data-act="del" data-id="${n.id}">Del</button>
-          </span>
-        </li>`).join("") : '<li class="empty">No notes yet.</li>'}
+      ${filtered.length ? (() => {
+        // Separate pinned and unpinned notes
+        const pinned = filtered.filter(n => n.favorite);
+        const unpinned = filtered.filter(n => !n.favorite);
+        
+        // Group unpinned by month
+        const byMonth = {};
+        unpinned.forEach(n => {
+          const date = n.updated ? new Date(n.updated) : new Date();
+          const monthKey = date.toLocaleDateString("en-US", { year: "numeric", month: "long" });
+          if (!byMonth[monthKey]) byMonth[monthKey] = [];
+          byMonth[monthKey].push(n);
+        });
+        
+        let html = "";
+        
+        // Render pinned notes group
+        if (pinned.length > 0) {
+          const groupId = "notes-pinned";
+          html += `<div class="group-header" data-group-id="${groupId}">
+            📌 Pinned <span class="group-badge">${pinned.length}</span>
+          </div>`;
+          html += `<div class="group-content" data-group-id="${groupId}">
+            ${pinned.map((n) => `
+              <li class="item note" style="${noteStyle(n)}">
+                <div class="item-main">
+                  <span class="item-name">📌 ${esc(n.title)}</span>
+                  <span class="muted">${esc((n.text || "").slice(0, 80))}</span>
+                  ${(n.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+                  <span class="muted tiny">${n.updated ? new Date(n.updated).toLocaleDateString() : ""}</span>
+                </div>
+                <span class="row-actions">
+                  <button class="ghost" data-act="fav" data-id="${n.id}">Unpin</button>
+                  <button class="ghost" data-act="edit" data-id="${n.id}">Edit</button>
+                  <button class="ghost danger" data-act="del" data-id="${n.id}">Del</button>
+                </span>
+              </li>`).join("")}
+          </div>`;
+        }
+        
+        // Render month groups
+        const monthOrder = Object.keys(byMonth).sort((a, b) => new Date(b) - new Date(a));
+        monthOrder.forEach(monthKey => {
+          const monthNotes = byMonth[monthKey];
+          const groupId = `notes-${monthKey}`;
+          const isCollapsed = isGroupCollapsed(groupId);
+          
+          html += `<div class="group-header ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}" data-toggle="group-header">
+            ${monthKey} <span class="group-badge">${monthNotes.length}</span>
+          </div>`;
+          html += `<div class="group-content ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}">
+            ${monthNotes.map((n) => `
+              <li class="item note" style="${noteStyle(n)}">
+                <div class="item-main">
+                  <span class="item-name">${esc(n.title)}</span>
+                  <span class="muted">${esc((n.text || "").slice(0, 80))}</span>
+                  ${(n.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+                  <span class="muted tiny">${n.updated ? new Date(n.updated).toLocaleDateString() : ""}</span>
+                </div>
+                <span class="row-actions">
+                  <button class="ghost" data-act="fav" data-id="${n.id}">Pin</button>
+                  <button class="ghost" data-act="edit" data-id="${n.id}">Edit</button>
+                  <button class="ghost danger" data-act="del" data-id="${n.id}">Del</button>
+                </span>
+              </li>`).join("")}
+          </div>`;
+        });
+        
+        return html;
+      })() : '<li class="empty">No notes yet.</li>'}
     </ul>
   `;
   
