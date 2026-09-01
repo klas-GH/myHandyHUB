@@ -22,8 +22,8 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="css/style.css?v=22">
-  <script type="module" src="js/app.js?v=22"></script>
+  <link rel="stylesheet" href="css/style.css?v=23">
+  <script type="module" src="js/app.js?v=23"></script>
 </head>
 <body>
   <header class="site-header">
@@ -43,10 +43,10 @@
 
   <main class="app-shell">
     <nav class="tabs" role="tablist" aria-label="Apps">
-      <button class="tab is-selected" type="button" role="tab" data-app="todos" aria-selected="true">ToDos</button>
-      <button class="tab" type="button" role="tab" data-app="shopping" aria-selected="false">Shopping</button>
-      <button class="tab" type="button" role="tab" data-app="links" aria-selected="false">Links</button>
-      <button class="tab" type="button" role="tab" data-app="notes" aria-selected="false">Notes</button>
+      <button class="tab is-selected" type="button" role="tab" data-app="todos" aria-selected="true"><span aria-hidden="true">☑</span> ToDos</button>
+      <button class="tab" type="button" role="tab" data-app="shopping" aria-selected="false"><span aria-hidden="true">🛒</span> Shopping</button>
+      <button class="tab" type="button" role="tab" data-app="links" aria-selected="false"><span aria-hidden="true">🔗</span> Links</button>
+      <button class="tab" type="button" role="tab" data-app="notes" aria-selected="false"><span aria-hidden="true">📝</span> Notes</button>
     </nav>
     <section class="view todo-app" id="view-todos" aria-labelledby="todo-title" role="tabpanel">
       <h2 id="todo-title">ToDos</h2>
@@ -123,6 +123,13 @@
     <section class="view is-hidden" id="view-shopping" role="tabpanel" aria-labelledby="shopping-title">
       <div class="app-head">
         <h2 id="shopping-title">Shopping</h2>
+        <div class="app-stats" aria-live="polite">
+          <span><strong id="shop-pending">0</strong> to buy</span>
+          <span><strong id="shop-total">0</strong> total</span>
+        </div>
+      </div>
+      <div class="app-controls">
+        <button class="backup-button" id="shop-export" type="button">Export</button>
       </div>
       <div id="shopping-app"></div>
     </section>
@@ -130,6 +137,12 @@
     <section class="view is-hidden" id="view-links" role="tabpanel" aria-labelledby="links-title">
       <div class="app-head">
         <h2 id="links-title">Links</h2>
+        <div class="app-stats" aria-live="polite">
+          <span><strong id="links-count">0</strong> saved</span>
+        </div>
+      </div>
+      <div class="app-controls">
+        <button class="backup-button" id="links-export" type="button">Export</button>
       </div>
       <div id="links-app"></div>
     </section>
@@ -137,6 +150,12 @@
     <section class="view is-hidden" id="view-notes" role="tabpanel" aria-labelledby="notes-title">
       <div class="app-head">
         <h2 id="notes-title">Notes</h2>
+        <div class="app-stats" aria-live="polite">
+          <span><strong id="notes-count">0</strong> notes</span>
+        </div>
+      </div>
+      <div class="app-controls">
+        <button class="backup-button" id="notes-export" type="button">Export</button>
       </div>
       <div id="notes-app"></div>
     </section>

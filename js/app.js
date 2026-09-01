@@ -645,6 +645,77 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+function exportShoppingData() {
+  shopLoad();
+  const backup = {
+    app: "myHandyHub",
+    appType: "Shopping",
+    formatVersion: 1,
+    exportedAt: new Date().toISOString(),
+    shopping: shop.data
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const date = new Date().toISOString().slice(0, 10);
+  const filename = `myHandyHub-shopping-${date}.json`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportLinksData() {
+  linksLoad();
+  const backup = {
+    app: "myHandyHub",
+    appType: "Links",
+    formatVersion: 1,
+    exportedAt: new Date().toISOString(),
+    links: links.data
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const date = new Date().toISOString().slice(0, 10);
+  const filename = `myHandyHub-links-${date}.json`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportNotesData() {
+  notesLoad();
+  const backup = {
+    app: "myHandyHub",
+    appType: "Notes",
+    formatVersion: 1,
+    exportedAt: new Date().toISOString(),
+    notes: notes.data
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const date = new Date().toISOString().slice(0, 10);
+  const filename = `myHandyHub-notes-${date}.json`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const shopExportBtn = document.querySelector("#shop-export");
+const linksExportBtn = document.querySelector("#links-export");
+const notesExportBtn = document.querySelector("#notes-export");
+
+if (shopExportBtn) shopExportBtn.addEventListener("click", exportShoppingData);
+if (linksExportBtn) linksExportBtn.addEventListener("click", exportLinksData);
+if (notesExportBtn) notesExportBtn.addEventListener("click", exportNotesData);
+
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const money = (n) => (Number(n) || 0).toFixed(2);
 function esc(s) {
@@ -790,6 +861,12 @@ function renderShopping() {
     </div>
     ${Number(list.budget) ? `<div class="budget">Budget ${money(list.budget)} · Spent ${money(total)} · Remaining <strong>${money(list.budget - total)}</strong></div>` : ""}
   `;
+  
+  const shopPending = document.getElementById("shop-pending");
+  const shopTotal = document.getElementById("shop-total");
+  const pendingCount = items.filter(i => !i.bought).length;
+  if (shopPending) shopPending.textContent = pendingCount;
+  if (shopTotal) shopTotal.textContent = items.length;
 }
 
 function initShopping() {
@@ -976,6 +1053,9 @@ function renderLinks() {
         </li>`).join("") : '<li class="empty">No links yet.</li>'}
     </ul>
   `;
+  
+  const linksCount = document.getElementById("links-count");
+  if (linksCount) linksCount.textContent = links.data.length;
 }
 
 function initLinks() {
@@ -1088,6 +1168,9 @@ function renderNotes() {
         </li>`).join("") : '<li class="empty">No notes yet.</li>'}
     </ul>
   `;
+  
+  const notesCount = document.getElementById("notes-count");
+  if (notesCount) notesCount.textContent = notes.data.length;
 }
 
 function initNotes() {

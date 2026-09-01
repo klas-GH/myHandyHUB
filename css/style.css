@@ -952,6 +952,69 @@ button { font: inherit; cursor: pointer; }
 .ghost.danger:hover,
 .ghost.danger:focus-visible {
   color: var(--priority-high);
+}
+
+.tab span[aria-hidden="true"] {
+  display: inline-block;
+  margin-right: 0.35rem;
+  font-size: 1rem;
+}
+
+.app-head {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.app-head h2 {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: 0.01em;
+}
+
+.app-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.app-stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.app-stats strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.app-controls {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.backup-button {
+  min-height: 2.25rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.backup-button:hover,
+.backup-button:focus-visible {
+  color: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
   border-color: var(--priority-high);
 }
 
