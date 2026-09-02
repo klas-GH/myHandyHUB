@@ -978,6 +978,7 @@ const APP_VIEWS = {
   shopping: { panel: "view-shopping", init: initShopping },
   links: { panel: "view-links", init: initLinks },
   notes: { panel: "view-notes", init: initNotes },
+  passwords: { panel: "view-passwords", init: initPasswords },
 };
 
 function initTodos() {}
@@ -1654,6 +1655,197 @@ function initNotes() {
   }, { passive: true });
   
   renderNotes();
+}
+
+const PASSWORDS_KEY = "myHandyHub.passwords";
+const passwords = { inited: false, data: null, q: "", editingId: null };
+
+function passwordsLoad() { if (!passwords.data) passwords.data = storeGet(PASSWORDS_KEY, []); return passwords.data; }
+function passwordsSave() { storeSet(PASSWORDS_KEY, passwords.data); }
+
+function generatePassword(length = 16, options = { upper: true, lower: true, numbers: true, symbols: true }) {
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const numbers = "0123456789";
+  const symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?";
+  let chars = "";
+  if (options.upper) chars += upper;
+  if (options.lower) chars += lower;
+  if (options.numbers) chars += numbers;
+  if (options.symbols) chars += symbols;
+  if (!chars) chars = lower;
+  let password = "";
+  const array = new Uint32Array(length);
+  crypto.getRandomValues(array);
+  for (let i = 0; i < length; i++) {
+    password += chars[array[i] % chars.length];
+  }
+  return password;
+}
+
+function passwordStrength(password) {
+  let score = 0;
+  if (password.length >= 12) score++;
+  if (password.length >= 16) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  if (score <= 2) return "weak";
+  if (score <= 4) return "medium";
+  return "strong";
+}
+
+function renderPasswords() {
+  passwordsLoad();
+  const root = document.getElementById("passwords-app");
+  const q = passwords.q.toLowerCase();
+  const filtered = passwords.data.filter((p) => {
+    if (q && !(`${p.site} ${p.username} ${p.password}`.toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a, b) => (b.favorite - a.favorite) || a.site.localeCompare(b.site));
+
+  const editing = passwords.editingId ? filtered.find((p) => p.id === passwords.editingId) : null;
+
+  root.innerHTML = `
+    <div class="password-generator">
+      <div class="password-display">
+        <input type="text" id="generated-password" readonly value="${esc(editing ? editing.password : generatePassword(16))}" aria-label="Generated password">
+        <button class="ghost" type="button" data-act="copy-password" data-id="generated">Copy</button>
+        <button class="ghost" type="button" data-act="regenerate">↻</button>
+      </div>
+      <div class="password-strength">
+        <div class="password-strength-bar strength-${passwordStrength(editing ? editing.password : generatePassword(16))}" id="strength-bar"></div>
+      </div>
+      <label>Length <input type="range" id="pwd-length" min="12" max="36" value="16"><output id="pwd-length-output">16</output></label>
+      <label><input type="checkbox" id="pwd-upper" checked> A-Z</label>
+      <label><input type="checkbox" id="pwd-lower" checked> a-z</label>
+      <label><input type="checkbox" id="pwd-numbers" checked> 0-9</label>
+      <label><input type="checkbox" id="pwd-symbols" checked> !@#</label>
+    </div>
+    <form id="password-form" class="item-form">
+      <input name="site" placeholder="Site / App" value="${editing ? esc(editing.site) : ""}" required>
+      <input name="username" placeholder="Username / Email" value="${editing ? esc(editing.username) : ""}" required>
+      <input name="password" type="password" placeholder="Password (min 12 chars)" value="${editing ? esc(editing.password) : ""}" required minlength="12" maxlength="36">
+      <input name="notes" placeholder="Notes (optional)" value="${editing ? esc(editing.notes || "") : ""}">
+      <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
+      ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
+    </form>
+    <div class="app-bar">
+      <input id="password-search" placeholder="Search…" value="${esc(passwords.q)}">
+    </div>
+    <ul class="item-list">
+      ${filtered.length ? filtered.map((p) => `
+        <li class="item vault-item ${p.compromised ? "is-compromised" : ""}" data-id="${p.id}">
+          <div class="vault-main">
+            <span class="item-name">${p.favorite ? "⭐ " : ""}${esc(p.site)}</span>
+            <span class="vault-meta">${esc(p.username)}</span>
+            <span class="vault-password">••••••••</span>
+            ${p.notes ? `<span class="muted">${esc(p.notes)}</span>` : ""}
+          </div>
+          <span class="row-actions">
+            <button class="ghost" data-act="toggle-visibility" data-id="${p.id}">Show</button>
+            <button class="ghost" data-act="copy-password" data-id="${p.id}">Copy</button>
+            <button class="ghost" data-act="fav" data-id="${p.id}">${p.favorite ? "Unfav" : "Fav"}</button>
+            <button class="ghost" data-act="edit" data-id="${p.id}">Edit</button>
+            <button class="ghost danger" data-act="del" data-id="${p.id}">Del</button>
+          </span>
+        </li>`).join("") : '<li class="empty">No passwords yet. Generate or add one above.</li>'}
+    </ul>
+  `;
+}
+
+function initPasswords() {
+  passwordsLoad();
+  if (passwords.inited) { renderPasswords(); return; }
+  passwords.inited = true;
+  const root = document.getElementById("passwords-app");
+
+  root.addEventListener("submit", (e) => {
+    if (e.target.id !== "password-form") return;
+    e.preventDefault();
+    const f = e.target;
+    const password = f.password.value.trim();
+    if (password.length < 12) { alert("Password must be at least 12 characters"); return; }
+    if (passwords.editingId) {
+      const item = passwords.data.find((x) => x.id === passwords.editingId);
+      if (item) {
+        item.site = f.site.value.trim();
+        item.username = f.username.value.trim();
+        item.password = password;
+        item.notes = f.notes.value.trim();
+      }
+      passwords.editingId = null;
+    } else {
+      passwords.data.push({ id: uid(), site: f.site.value.trim(), username: f.username.value.trim(), password, notes: f.notes.value.trim(), favorite: false, compromised: false, created: new Date().toISOString(), updated: new Date().toISOString() });
+    }
+    passwordsSave(); renderPasswords();
+  });
+
+  root.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    const act = btn.dataset.act;
+    const p = passwords.data.find((x) => x.id === btn.dataset.id);
+    if (!p && btn.dataset.id !== "generated" && act !== "regenerate") return;
+
+    if (act === "regenerate") {
+      const length = document.getElementById("pwd-length")?.value || 16;
+      const upper = document.getElementById("pwd-upper")?.checked ?? true;
+      const lower = document.getElementById("pwd-lower")?.checked ?? true;
+      const numbers = document.getElementById("pwd-numbers")?.checked ?? true;
+      const symbols = document.getElementById("pwd-symbols")?.checked ?? true;
+      const newPwd = generatePassword(Number(length), { upper, lower, numbers, symbols });
+      const input = document.getElementById("generated-password");
+      if (input) input.value = newPwd;
+      const bar = document.getElementById("strength-bar");
+      if (bar) { bar.className = `password-strength-bar strength-${passwordStrength(newPwd)}`; }
+    }
+    else if (act === "copy-password") {
+      const text = btn.dataset.id === "generated" ? document.getElementById("generated-password")?.value : p.password;
+      if (text) {
+        try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; setTimeout(() => { if (btn.dataset.id === "generated") { btn.textContent = "Copy"; const pwdInput = document.querySelector('#password-form input[name="password"]'); if (pwdInput) pwdInput.value = text; } else renderPasswords(); }, 800); } catch (err) { alert(text); }
+      }
+    }
+    else if (act === "toggle-visibility" && p) {
+      const item = btn.closest(".vault-item");
+      const pwdSpan = item?.querySelector(".vault-password");
+      if (pwdSpan) {
+        const isHidden = pwdSpan.textContent === "••••••••";
+        pwdSpan.textContent = isHidden ? p.password : "••••••••";
+        btn.textContent = isHidden ? "Hide" : "Show";
+      }
+    }
+    else if (act === "fav") { p.favorite = !p.favorite; passwordsSave(); renderPasswords(); }
+    else if (act === "del") { passwords.data = passwords.data.filter((x) => x.id !== p.id); passwordsSave(); renderPasswords(); }
+    else if (act === "edit") {
+      passwords.editingId = p.id;
+      renderPasswords();
+    }
+    else if (act === "cancel-edit") {
+      passwords.editingId = null;
+      renderPasswords();
+    }
+  });
+
+  root.addEventListener("input", (e) => {
+    if (e.target.id === "password-search") { passwords.q = e.target.value; renderPasswords(); }
+    else if (e.target.id === "pwd-length") {
+      const output = document.getElementById("pwd-length-output");
+      if (output) output.value = e.target.value;
+      const btn = root.querySelector('[data-act="regenerate"]');
+      if (btn) btn.click();
+    }
+  });
+
+  root.addEventListener("change", (e) => {
+    if (e.target.id === "pwd-upper" || e.target.id === "pwd-lower" || e.target.id === "pwd-numbers" || e.target.id === "pwd-symbols") {
+      const btn = root.querySelector('[data-act="regenerate"]');
+      if (btn) btn.click();
+    }
+  });
+
+  renderPasswords();
 }
 
 // Register the service worker only when the browser supports offline caching.

@@ -882,6 +882,13 @@ button { font: inherit; cursor: pointer; }
 }
 .item-form#shop-form .add-button { flex-basis: 100%; }
 .item-form#link-form .add-button { flex-basis: 100%; }
+.item-form#password-form .add-button { flex-basis: 100%; }
+.item-form#password-form input[name="site"],
+.item-form#password-form input[name="username"],
+.item-form#password-form input[name="password"],
+.item-form#password-form input[name="notes"] {
+  flex: 1 1 0;
+}
 .item-form .add-button { height: 2.4rem; padding: 0 1rem; }
 .app-bar input[type="number"] { width: 6rem; }
 
@@ -1114,6 +1121,101 @@ button { font: inherit; cursor: pointer; }
 .note-form .note-row { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .note-form .note-row select,
 .note-form .note-row input { flex: 1 1 10rem; }
+
+/* Passwords mini app */
+.password-generator {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+.password-generator input[type="text"] {
+  flex: 1 1 10rem;
+  height: 2.4rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.password-generator input[type="range"] {
+  flex: 1 1 10rem;
+}
+.password-generator label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.password-display {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 100%;
+}
+.password-display input {
+  flex: 1;
+  height: 2.6rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.password-strength {
+  width: 100%;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--border-default);
+  overflow: hidden;
+}
+.password-strength-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  transition: width 150ms ease, background 150ms ease;
+}
+.strength-weak { background: var(--priority-high); width: 33%; }
+.strength-medium { background: #d6a84b; width: 66%; }
+.strength-strong { background: var(--status-ok); width: 100%; }
+
+.vault-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--border-default);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+}
+.vault-item.is-compromised { border-left-color: var(--priority-high); }
+.vault-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.7rem;
+  min-width: 0;
+  flex: 1;
+}
+.vault-password {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+}
+.vault-meta {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
 
 /* Animations & Micro-interactions */
 @keyframes fadeOut {

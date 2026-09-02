@@ -43,10 +43,11 @@
 
   <main class="app-shell">
     <nav class="tabs" role="tablist" aria-label="Apps">
-      <button class="tab is-selected" type="button" role="tab" data-app="todos" aria-selected="true"><span aria-hidden="true">☑</span> ToDos</button>
-      <button class="tab" type="button" role="tab" data-app="shopping" aria-selected="false"><span aria-hidden="true">🛒</span> Shopping</button>
-      <button class="tab" type="button" role="tab" data-app="links" aria-selected="false"><span aria-hidden="true">🔗</span> Links</button>
-      <button class="tab" type="button" role="tab" data-app="notes" aria-selected="false"><span aria-hidden="true">📝</span> Notes</button>
+      <button class="tab is-selected" type="button" role="tab" data-app="todos" aria-selected="true"><span aria-hidden="true">☑</span></button>
+      <button class="tab" type="button" role="tab" data-app="shopping" aria-selected="false"><span aria-hidden="true">🛒</span></button>
+      <button class="tab" type="button" role="tab" data-app="links" aria-selected="false"><span aria-hidden="true">🔗</span></button>
+      <button class="tab" type="button" role="tab" data-app="notes" aria-selected="false"><span aria-hidden="true">📝</span></button>
+      <button class="tab" type="button" role="tab" data-app="passwords" aria-selected="false"><span aria-hidden="true">🔐</span></button>
     </nav>
     <section class="view todo-app" id="view-todos" aria-labelledby="todo-title" role="tabpanel">
       <h2 id="todo-title">ToDos</h2>
@@ -158,6 +159,16 @@
         <button class="backup-button" id="notes-export" type="button">Export</button>
       </div>
       <div id="notes-app"></div>
+    </section>
+
+    <section class="view is-hidden" id="view-passwords" role="tabpanel" aria-labelledby="passwords-title">
+      <div class="app-head">
+        <h2 id="passwords-title">Passwords</h2>
+        <div class="app-stats" aria-live="polite">
+          <span><strong id="passwords-count">0</strong> saved</span>
+        </div>
+      </div>
+      <div id="passwords-app"></div>
     </section>
   </main>
 
