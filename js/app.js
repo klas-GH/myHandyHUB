@@ -1658,10 +1658,71 @@ function initNotes() {
 }
 
 const PASSWORDS_KEY = "myHandyHub.passwords";
-const passwords = { inited: false, data: null, q: "", editingId: null };
+const passwords = { inited: false, data: null, q: "", editingId: null, unlocked: false, masterPassword: null };
 
 function passwordsLoad() { if (!passwords.data) passwords.data = storeGet(PASSWORDS_KEY, []); return passwords.data; }
-function passwordsSave() { storeSet(PASSWORDS_KEY, passwords.data); }
+
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encryptVault(password, data) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(password, salt);
+  const enc = new TextEncoder();
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(JSON.stringify(data)));
+  const buf = new Uint8Array(salt.byteLength + iv.byteLength + ciphertext.byteLength);
+  buf.set(salt, 0);
+  buf.set(iv, salt.byteLength);
+  buf.set(new Uint8Array(ciphertext), salt.byteLength + iv.byteLength);
+  return btoa(String.fromCharCode(...buf));
+}
+
+async function decryptVault(password, base64) {
+  try {
+    const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const salt = raw.slice(0, 16);
+    const iv = raw.slice(16, 28);
+    const ciphertext = raw.slice(28);
+    const key = await deriveKey(password, salt);
+    const dec = new TextDecoder();
+    const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+    return JSON.parse(dec.decode(plaintext));
+  } catch (e) {
+    return null;
+  }
+}
+
+async function unlockVault(password) {
+  const stored = localStorage.getItem("myHandyHub.passwords.encrypted");
+  if (!stored) return { ok: false, needsSetup: true };
+  const data = await decryptVault(password, stored);
+  if (!data) return { ok: false, needsSetup: false };
+  passwords.data = data;
+  passwords.unlocked = true;
+  return { ok: true, needsSetup: false };
+}
+
+async function setupVault(password) {
+  const data = [];
+  passwords.data = data;
+  passwords.unlocked = true;
+  await saveEncryptedVault(password, data);
+}
+
+async function saveEncryptedVault(password, data) {
+  const encrypted = await encryptVault(password, data);
+  localStorage.setItem("myHandyHub.passwords.encrypted", encrypted);
+}
 
 function generatePassword(length = 16, options = { upper: true, lower: true, numbers: true, symbols: true }) {
   const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -1697,8 +1758,28 @@ function passwordStrength(password) {
 }
 
 function renderPasswords() {
-  passwordsLoad();
   const root = document.getElementById("passwords-app");
+  if (!passwords.unlocked) {
+    const hasVault = !!localStorage.getItem("myHandyHub.passwords.encrypted");
+    root.innerHTML = `
+      <div id="vault-lock" class="vault-lock">
+        <form id="vault-unlock-form" class="dialog-form" ${hasVault ? "" : "hidden"}>
+          <input id="vault-master" type="password" placeholder="Master password" required autocomplete="current-password">
+          <button type="submit" class="add-button">Unlock</button>
+        </form>
+        <form id="vault-setup-form" class="dialog-form" ${hasVault ? "hidden" : ""}>
+          <input id="vault-new-master" type="password" placeholder="New master password" required minlength="6" autocomplete="new-password">
+          <input id="vault-confirm" type="password" placeholder="Confirm" required minlength="6" autocomplete="new-password">
+          <button type="submit" class="add-button">Create vault</button>
+        </form>
+        <button class="ghost" id="vault-reset" type="button" ${hasVault ? "" : "hidden"}>Create new vault</button>
+        <p id="vault-error" class="muted" style="color:var(--priority-high)"></p>
+      </div>
+    `;
+    return;
+  }
+
+  passwordsLoad();
   const q = passwords.q.toLowerCase();
   const filtered = passwords.data.filter((p) => {
     if (q && !(`${p.site} ${p.username} ${p.password}`.toLowerCase().includes(q))) return false;
@@ -1733,6 +1814,7 @@ function renderPasswords() {
     </form>
     <div class="app-bar">
       <input id="password-search" placeholder="Search…" value="${esc(passwords.q)}">
+      <button class="ghost" id="vault-lock-btn" type="button">🔒 Lock</button>
     </div>
     <ul class="item-list">
       ${filtered.length ? filtered.map((p) => `
@@ -1753,6 +1835,9 @@ function renderPasswords() {
         </li>`).join("") : '<li class="empty">No passwords yet. Generate or add one above.</li>'}
     </ul>
   `;
+
+  const passwordsCount = document.getElementById("passwords-count");
+  if (passwordsCount) passwordsCount.textContent = passwords.data.length;
 }
 
 function initPasswords() {
@@ -1761,7 +1846,66 @@ function initPasswords() {
   passwords.inited = true;
   const root = document.getElementById("passwords-app");
 
-  root.addEventListener("submit", (e) => {
+  async function handleUnlock(e) {
+    e.preventDefault();
+    const input = document.getElementById("vault-master");
+    const error = document.getElementById("vault-error");
+    if (!input) return;
+    const password = input.value;
+    if (!password) return;
+    const result = await unlockVault(password);
+    if (result.ok) {
+      passwords.masterPassword = password;
+      renderPasswords();
+    } else {
+      if (error) error.textContent = "Wrong password";
+      input.value = "";
+    }
+  }
+
+  async function handleSetup(e) {
+    e.preventDefault();
+    const master = document.getElementById("vault-new-master");
+    const confirmInput = document.getElementById("vault-confirm");
+    const error = document.getElementById("vault-error");
+    if (!master || !confirmInput) return;
+    if (master.value !== confirmInput.value) {
+      if (error) error.textContent = "Passwords do not match";
+      return;
+    }
+    if (master.value.length < 6) {
+      if (error) error.textContent = "Password must be at least 6 characters";
+      return;
+    }
+
+    const hasVault = !!localStorage.getItem("myHandyHub.passwords.encrypted");
+    if (hasVault) {
+      const confirmDialog = document.getElementById("confirm-dialog");
+      const confirmMessage = document.getElementById("confirm-dialog-message");
+      const confirmOk = document.getElementById("confirm-dialog-ok");
+      if (confirmDialog && confirmMessage && confirmOk) {
+        confirmMessage.textContent = "This will delete all saved passwords and create a new vault. Continue?";
+        confirmOk.textContent = "Reset vault";
+        const doReset = await new Promise((resolve) => {
+          confirmOk.onclick = () => { resolve(true); };
+          confirmDialog.classList.add("is-visible");
+          confirmDialog.setAttribute("aria-hidden", "false");
+        });
+        confirmDialog.classList.remove("is-visible");
+        confirmDialog.setAttribute("aria-hidden", "true");
+        confirmOk.textContent = "Delete";
+        if (!doReset) return;
+      }
+    }
+
+    await setupVault(master.value);
+    passwords.masterPassword = master.value;
+    renderPasswords();
+  }
+
+  root.addEventListener("submit", async (e) => {
+    if (e.target.id === "vault-unlock-form") { handleUnlock(e); return; }
+    if (e.target.id === "vault-setup-form") { handleSetup(e); return; }
     if (e.target.id !== "password-form") return;
     e.preventDefault();
     const f = e.target;
@@ -1779,7 +1923,8 @@ function initPasswords() {
     } else {
       passwords.data.push({ id: uid(), site: f.site.value.trim(), username: f.username.value.trim(), password, notes: f.notes.value.trim(), favorite: false, compromised: false, created: new Date().toISOString(), updated: new Date().toISOString() });
     }
-    passwordsSave(); renderPasswords();
+    await saveEncryptedVault(passwords.masterPassword, passwords.data);
+    renderPasswords();
   });
 
   root.addEventListener("click", async (e) => {
@@ -1816,8 +1961,8 @@ function initPasswords() {
         btn.textContent = isHidden ? "Hide" : "Show";
       }
     }
-    else if (act === "fav") { p.favorite = !p.favorite; passwordsSave(); renderPasswords(); }
-    else if (act === "del") { passwords.data = passwords.data.filter((x) => x.id !== p.id); passwordsSave(); renderPasswords(); }
+    else if (act === "fav") { p.favorite = !p.favorite; await saveEncryptedVault(passwords.masterPassword, passwords.data); renderPasswords(); }
+    else if (act === "del") { passwords.data = passwords.data.filter((x) => x.id !== p.id); await saveEncryptedVault(passwords.masterPassword, passwords.data); renderPasswords(); }
     else if (act === "edit") {
       passwords.editingId = p.id;
       renderPasswords();
@@ -1827,6 +1972,16 @@ function initPasswords() {
       renderPasswords();
     }
   });
+
+  const lockBtn = document.getElementById("vault-lock-btn");
+  if (lockBtn) {
+    lockBtn.addEventListener("click", () => {
+      passwords.unlocked = false;
+      passwords.masterPassword = null;
+      passwords.data = [];
+      renderPasswords();
+    });
+  }
 
   root.addEventListener("input", (e) => {
     if (e.target.id === "password-search") { passwords.q = e.target.value; renderPasswords(); }

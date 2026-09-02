@@ -1129,6 +1129,21 @@ button { font: inherit; cursor: pointer; }
 .note-form .note-row input { flex: 1 1 10rem; }
 
 /* Passwords mini app */
+.vault-lock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-width: 24rem;
+  margin: var(--space-xl) auto;
+  padding: var(--space-lg);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+.vault-lock .dialog-form { display: flex; flex-direction: column; gap: var(--space-sm); }
+.vault-lock input { height: 2.4rem; padding: 0.35rem 0.6rem; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-page); color: var(--text-primary); font: inherit; }
+.vault-lock .ghost { align-self: flex-start; }
+
 .password-generator {
   display: flex;
   flex-wrap: wrap;
