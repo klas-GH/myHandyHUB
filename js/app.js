@@ -1764,7 +1764,7 @@ function renderPasswords() {
 
   if (!passwords.unlocked) {
     const hasVault = !!localStorage.getItem("myHandyHub.passwords.encrypted");
-    const setupCaption = hasVault ? "Create new vault" : "Create vault";
+    const setupCaption = hasVault ? "Reset / Create new vault" : "Create vault";
     root.innerHTML = `
       <div id="vault-lock" class="vault-lock">
         <form id="vault-unlock-form" class="dialog-form">
