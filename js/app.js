@@ -1759,20 +1759,23 @@ function passwordStrength(password) {
 
 function renderPasswords() {
   const root = document.getElementById("passwords-app");
+  const passwordsCount = document.getElementById("passwords-count");
+  if (passwordsCount) passwordsCount.textContent = passwords.unlocked ? (passwords.data ? passwords.data.length : 0) : 0;
+
   if (!passwords.unlocked) {
     const hasVault = !!localStorage.getItem("myHandyHub.passwords.encrypted");
+    const setupCaption = hasVault ? "Create new vault" : "Create vault";
     root.innerHTML = `
       <div id="vault-lock" class="vault-lock">
-        <form id="vault-unlock-form" class="dialog-form" ${hasVault ? "" : "hidden"}>
-          <input id="vault-master" type="password" placeholder="Master password" required autocomplete="current-password">
-          <button type="submit" class="add-button">Unlock</button>
+        <form id="vault-unlock-form" class="dialog-form">
+          <input id="vault-master" type="password" placeholder="Master password" required autocomplete="current-password" ${hasVault ? "" : "disabled"}>
+          <button type="submit" class="add-button" ${hasVault ? "" : "disabled"}>Unlock</button>
         </form>
-        <form id="vault-setup-form" class="dialog-form" ${hasVault ? "hidden" : ""}>
+        <form id="vault-setup-form" class="dialog-form">
           <input id="vault-new-master" type="password" placeholder="New master password" required minlength="6" autocomplete="new-password">
           <input id="vault-confirm" type="password" placeholder="Confirm" required minlength="6" autocomplete="new-password">
-          <button type="submit" class="add-button">Create vault</button>
+          <button type="submit" class="add-button">${setupCaption}</button>
         </form>
-        <button class="ghost" id="vault-reset" type="button" ${hasVault ? "" : "hidden"}>Create new vault</button>
         <p id="vault-error" class="muted" style="color:var(--priority-high)"></p>
       </div>
     `;
@@ -1835,9 +1838,6 @@ function renderPasswords() {
         </li>`).join("") : '<li class="empty">No passwords yet. Generate or add one above.</li>'}
     </ul>
   `;
-
-  const passwordsCount = document.getElementById("passwords-count");
-  if (passwordsCount) passwordsCount.textContent = passwords.data.length;
 }
 
 function initPasswords() {
