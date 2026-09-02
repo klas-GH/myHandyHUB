@@ -1005,6 +1005,12 @@ button { font: inherit; cursor: pointer; }
   margin-bottom: var(--space-md);
 }
 
+#view-shopping .app-controls,
+#view-links .app-controls,
+#view-notes .app-controls {
+  display: none;
+}
+
 .backup-button {
   min-height: 2.25rem;
   padding: 0.45rem 0.85rem;
@@ -1235,10 +1241,6 @@ button { font: inherit; cursor: pointer; }
 
 .todo-item.is-deleting {
   animation: slideOut 300ms ease-out forwards;
-}
-
-.todo-item.is-completed {
-  animation: fadeOut 400ms ease-out 400ms forwards;
 }
 
 .item.is-deleting {
