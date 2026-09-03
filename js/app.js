@@ -2052,6 +2052,9 @@ function renderInventory() {
       </ul>
     `;
   }
+
+  const inventoryCount = document.getElementById("inventory-count");
+  if (inventoryCount) inventoryCount.textContent = inventory.data.length;
 }
 
 function initInventory() {

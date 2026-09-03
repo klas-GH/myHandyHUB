@@ -1244,8 +1244,7 @@ button:disabled { cursor: default; opacity: 0.5; }
 .item-form#inventory-form input[name="quantity"],
 .item-form#inventory-form input[name="location"],
 .item-form#inventory-form input[name="notes"] {
-  flex: 1 1 calc(33.33% - 0.5rem);
-  max-width: calc(33.33% - 0.5rem);
+  flex: 1 1 0;
 }
 .item-form#inventory-form .add-button { flex-basis: 100%; }
 
