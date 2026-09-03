@@ -1817,7 +1817,7 @@ function renderPasswords() {
     </form>
     <div class="app-bar">
       <input id="password-search" placeholder="Search…" value="${esc(passwords.q)}">
-      <button class="ghost" id="vault-lock-btn" type="button">🔒 Lock</button>
+      <button class="ghost" data-act="lock" type="button">🔒 Lock</button>
     </div>
     <ul class="item-list">
       ${filtered.length ? filtered.map((p) => `
@@ -1932,9 +1932,15 @@ function initPasswords() {
     if (!btn) return;
     const act = btn.dataset.act;
     const p = passwords.data.find((x) => x.id === btn.dataset.id);
-    if (!p && btn.dataset.id !== "generated" && act !== "regenerate") return;
+    if (!p && btn.dataset.id !== "generated" && act !== "regenerate" && act !== "lock") return;
 
-    if (act === "regenerate") {
+    if (act === "lock") {
+      passwords.unlocked = false;
+      passwords.masterPassword = null;
+      passwords.data = [];
+      renderPasswords();
+    }
+    else if (act === "regenerate") {
       const length = document.getElementById("pwd-length")?.value || 16;
       const upper = document.getElementById("pwd-upper")?.checked ?? true;
       const lower = document.getElementById("pwd-lower")?.checked ?? true;
@@ -1972,16 +1978,6 @@ function initPasswords() {
       renderPasswords();
     }
   });
-
-  const lockBtn = document.getElementById("vault-lock-btn");
-  if (lockBtn) {
-    lockBtn.addEventListener("click", () => {
-      passwords.unlocked = false;
-      passwords.masterPassword = null;
-      passwords.data = [];
-      renderPasswords();
-    });
-  }
 
   root.addEventListener("input", (e) => {
     if (e.target.id === "password-search") { passwords.q = e.target.value; renderPasswords(); }
