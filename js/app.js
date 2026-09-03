@@ -917,6 +917,7 @@ const APP_VIEWS = {
   notes: { panel: "view-notes", init: initNotes },
   passwords: { panel: "view-passwords", init: initPasswords },
   inventory: { panel: "view-inventory", init: initInventory },
+  expenses: { panel: "view-expenses", init: initExpenses },
 };
 
 function initTodos() {}
@@ -2046,6 +2047,205 @@ function initInventory() {
   }
 
   renderInventory();
+}
+
+const EXPENSES_KEY = "myHandyHub.expenses";
+const EXPENSE_CATS = ["Food", "Transport", "Bills", "Shopping", "Entertainment", "Health", "Home", "Other"];
+const INCOME_CATS = ["Salary", "Freelance", "Business", "Gift", "Other"];
+const RECURRING_OPTS = [
+  { value: "", label: "Off" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "yearly", label: "Yearly" }
+];
+const expenses = { inited: false, data: null, period: "month", editingId: null, searchTimer: null, q: "", formType: "expense" };
+
+function expensesLoad() { if (!expenses.data) expenses.data = storeGet(EXPENSES_KEY, []); return expenses.data; }
+function expensesSave() { storeSet(EXPENSES_KEY, expenses.data); }
+
+function fmtAmount(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+
+function renderExpenses() {
+  expensesLoad();
+  const now = new Date();
+  const todayISO = now.toISOString().slice(0, 10);
+  const monthISO = now.toISOString().slice(0, 7);
+  const q = expenses.q.toLowerCase();
+
+  const filtered = expenses.data.filter((tx) => {
+    if (expenses.period === "today" && tx.date !== todayISO) return false;
+    if (expenses.period === "month" && !tx.date.startsWith(monthISO)) return false;
+    if (q && !(`${tx.category} ${tx.type}`.toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+
+  const editing = expenses.editingId ? expenses.data.find((x) => x.id === expenses.editingId) : null;
+  const isExpense = editing ? editing.type === "expense" : expenses.formType === "expense";
+  const cats = isExpense ? EXPENSE_CATS : INCOME_CATS;
+
+  const formContainer = document.getElementById("expenses-form-container");
+  const listContainer = document.getElementById("expenses-list-container");
+  const searchInput = document.getElementById("expense-search");
+
+  const wasFocused = searchInput === document.activeElement;
+  const cursorPos = wasFocused ? searchInput.selectionStart : 0;
+
+  if (formContainer) {
+    formContainer.innerHTML = `
+      <form id="expense-form" class="item-form">
+        <div class="expense-row">
+          <div class="expense-type-row">
+            <button type="button" class="ghost ${isExpense ? "is-selected" : ""}" data-act="set-type" data-type="expense">Expense</button>
+            <button type="button" class="ghost ${!isExpense ? "is-selected" : ""}" data-act="set-type" data-type="income">Income</button>
+          </div>
+          <input name="amount" type="number" inputmode="decimal" placeholder="0.00" value="${editing ? fmtAmount(editing.amount) : ""}" required step="0.01" min="0">
+        </div>
+        <div class="expense-row">
+          <select name="category">${cats.map((c) => `<option value="${c}" ${(editing ? editing.category : cats[0]) === c ? "selected" : ""}>${c}</option>`).join("")}</select>
+          <input name="date" type="date" value="${editing ? esc(editing.date) : todayISO}" required>
+          <select name="recurring">${RECURRING_OPTS.map((r) => `<option value="${r.value}" ${(editing ? editing.recurring : "") === r.value ? "selected" : ""}>${r.label}</option>`).join("")}</select>
+        </div>
+        <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
+        ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
+      </form>
+    `;
+  }
+
+  if (wasFocused) {
+    const newSearch = document.getElementById("expense-search");
+    if (newSearch) {
+      newSearch.focus();
+      newSearch.setSelectionRange(cursorPos, cursorPos);
+    }
+  }
+
+  if (searchInput) searchInput.value = expenses.q;
+
+  if (listContainer) {
+    const income = filtered.filter((tx) => tx.type === "income").reduce((s, tx) => s + tx.amount, 0);
+    const expense = filtered.filter((tx) => tx.type === "expense").reduce((s, tx) => s + tx.amount, 0);
+    const balance = income - expense;
+
+    listContainer.innerHTML = `
+      <div class="expense-summary">
+        <span class="balance ${balance >= 0 ? "is-positive" : "is-negative"}">${fmtAmount(balance)}</span>
+        <span class="muted">+${fmtAmount(income)} / -${fmtAmount(expense)}</span>
+      </div>
+      <ul class="item-list">
+        ${filtered.length ? filtered.map((tx) => `
+          <li class="item" data-id="${tx.id}">
+            <div class="item-main">
+              <span class="item-name">${esc(tx.category)}</span>
+              <span class="muted">${tx.date}${tx.recurring ? " · " + tx.recurring : ""}</span>
+            </div>
+            <span class="row-actions">
+              <span class="tx-amount ${tx.type === "income" ? "is-positive" : "is-negative"}">${tx.type === "income" ? "+" : "-"}${fmtAmount(tx.amount)}</span>
+              <button class="ghost" data-act="edit" data-id="${tx.id}">Edit</button>
+              <button class="ghost danger" data-act="del" data-id="${tx.id}">Del</button>
+            </span>
+          </li>`).join("") : '<li class="empty">No transactions yet.</li>'}
+      </ul>
+    `;
+  }
+
+  const balanceEl = document.getElementById("expenses-balance");
+  if (balanceEl) {
+    const income = filtered.filter((tx) => tx.type === "income").reduce((s, tx) => s + tx.amount, 0);
+    const expense = filtered.filter((tx) => tx.type === "expense").reduce((s, tx) => s + tx.amount, 0);
+    balanceEl.innerHTML = `<strong>${fmtAmount(income - expense)}</strong> balance`;
+  }
+}
+
+function initExpenses() {
+  expensesLoad();
+  if (expenses.inited) { renderExpenses(); return; }
+  expenses.inited = true;
+  const formContainer = document.getElementById("expenses-form-container");
+  const listContainer = document.getElementById("expenses-list-container");
+  const viewRoot = document.getElementById("view-expenses");
+
+  viewRoot.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    const act = btn.dataset.act;
+
+    if (act === "period") {
+      expenses.period = btn.dataset.period;
+      renderExpenses();
+      return;
+    }
+
+    if (act === "set-type") {
+      const newType = btn.dataset.type;
+      if (expenses.formType === newType) return;
+      expenses.formType = newType;
+      renderExpenses();
+      return;
+    }
+
+    const tx = expenses.data.find((x) => x.id === btn.dataset.id);
+    if (!tx && act !== "toggle-group") return;
+
+    if (act === "edit") {
+      expenses.editingId = tx.id;
+      renderExpenses();
+    } else if (act === "del") {
+      expenses.data = expenses.data.filter((x) => x.id !== tx.id);
+      expensesSave();
+      renderExpenses();
+      showToast("Transaction deleted", "info", 2000);
+    } else if (act === "cancel-edit") {
+      expenses.editingId = null;
+      renderExpenses();
+    }
+  });
+
+  const searchInput = document.getElementById("expense-search");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      clearTimeout(expenses.searchTimer);
+      expenses.searchTimer = setTimeout(() => {
+        expenses.q = e.target.value;
+        renderExpenses();
+      }, 300);
+    });
+  }
+
+  formContainer.addEventListener("submit", (e) => {
+    if (e.target.id !== "expense-form") return;
+    e.preventDefault();
+    const f = e.target;
+    const amount = Math.round(parseFloat(f.amount.value) * 100) / 100;
+    if (isNaN(amount) || amount < 0) return;
+
+    const typeBtn = viewRoot.querySelector('button[data-act="set-type"].is-selected');
+    const type = typeBtn ? typeBtn.dataset.type : "expense";
+
+    if (expenses.editingId) {
+      const tx = expenses.data.find((x) => x.id === expenses.editingId);
+      if (tx) {
+        tx.type = type;
+        tx.amount = amount;
+        tx.category = f.category.value;
+        tx.date = f.date.value;
+        tx.recurring = f.recurring.value || null;
+      }
+      expenses.editingId = null;
+    } else {
+      expenses.data.push({
+        id: uid(),
+        type,
+        amount,
+        category: f.category.value,
+        date: f.date.value,
+        recurring: f.recurring.value || null
+      });
+    }
+    expensesSave();
+    renderExpenses();
+  });
+
+  renderExpenses();
 }
 
 // Register the service worker only when the browser supports offline caching.

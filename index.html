@@ -49,6 +49,7 @@
       <button class="tab" type="button" role="tab" data-app="notes" aria-selected="false"><span aria-hidden="true">📝</span></button>
       <button class="tab" type="button" role="tab" data-app="passwords" aria-selected="false"><span aria-hidden="true">🔐</span></button>
       <button class="tab" type="button" role="tab" data-app="inventory" aria-selected="false"><span aria-hidden="true">📦</span></button>
+      <button class="tab" type="button" role="tab" data-app="expenses" aria-selected="false"><span aria-hidden="true">💰</span></button>
     </nav>
     <section class="view todo-app" id="view-todos" aria-labelledby="todo-title" role="tabpanel">
       <h2 id="todo-title">ToDos</h2>
@@ -204,6 +205,24 @@
           <input id="inventory-search" placeholder="Search…">
         </div>
         <div id="inventory-list-container"></div>
+      </div>
+    </section>
+
+    <section class="view is-hidden" id="view-expenses" role="tabpanel" aria-labelledby="expenses-title">
+      <div class="app-head">
+        <h2 id="expenses-title">ExpenseHUB</h2>
+        <div class="app-stats" aria-live="polite">
+          <span id="expenses-balance"><strong>0.00</strong> balance</span>
+        </div>
+      </div>
+      <div id="expenses-app">
+        <div id="expenses-form-container"></div>
+        <div class="app-bar">
+          <input id="expense-search" placeholder="Search…">
+          <button class="ghost is-selected" data-act="period" data-period="today">Today</button>
+          <button class="ghost" data-act="period" data-period="month">This Month</button>
+        </div>
+        <div id="expenses-list-container"></div>
       </div>
     </section>
   </main>

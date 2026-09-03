@@ -1248,6 +1248,23 @@ button:disabled { cursor: default; opacity: 0.5; }
 }
 .item-form#inventory-form .add-button { flex-basis: 100%; }
 
+/* Expenses */
+.expense-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; width: 100%; }
+.expense-row > * { flex: 1 1 0; min-width: 0; }
+.expense-type-row { display: flex; gap: 0.5rem; }
+.expense-type-row .is-selected { background: var(--accent-strong); color: #fff; }
+.expense-summary { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.85rem; }
+.expense-summary .balance { font-size: 1.25rem; font-weight: 700; }
+.expense-summary .is-positive { color: var(--priority-low); }
+.expense-summary .is-negative { color: var(--priority-high); }
+.tx-amount { font-weight: 600; }
+.tx-amount.is-positive { color: var(--priority-low); }
+.tx-amount.is-negative { color: var(--priority-high); }
+.item-form#expense-form input[name="amount"] { font-size: 1.25rem; text-align: right; }
+@media (min-width: 640px) {
+  .item-form#expense-form .add-button { flex-basis: 100%; }
+}
+
 /* Animations & Micro-interactions */
 @keyframes fadeOut {
   from { opacity: 1; transform: scale(1); }
