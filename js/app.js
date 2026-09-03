@@ -1294,7 +1294,7 @@ function initShopping() {
 
 const LINKS_KEY = "_myHandyHub.links";
 const LINK_CATS = ["Work", "Shopping", "Finance", "Travel", "Tools", "Other"];
-const links = { inited: false, data: null, filter: "all", q: "", editingId: null };
+const links = { inited: false, data: null, filter: "all", q: "", editingId: null, searchTimer: null };
 
 function linksLoad() { if (!links.data) links.data = storeGet(LINKS_KEY, []); return links.data; }
 function linksSave() { storeSet(LINKS_KEY, links.data); }
@@ -1302,7 +1302,6 @@ function domainOf(url) { try { return new URL(url).hostname.replace(/^www\./, ""
 
 function renderLinks() {
   linksLoad();
-  const root = document.getElementById("links-app");
   const q = links.q.toLowerCase();
   const filtered = links.data.filter((l) => {
     if (links.filter === "fav" && !l.favorite) return false;
@@ -1313,84 +1312,78 @@ function renderLinks() {
 
   const editing = links.editingId ? links.data.find((x) => x.id === links.editingId) : null;
 
-  root.innerHTML = `
-    <form id="link-form" class="item-form">
-      <input name="url" placeholder="https://…" value="${editing ? esc(editing.url) : ""}" required pattern="https?://.+" title="URL must start with http(s)://">
-      <input name="name" placeholder="Name" value="${editing ? esc(editing.name) : ""}" required>
-      <select name="category">
-        <option>Work</option>
-        <option>Shopping</option>
-        <option>Finance</option>
-        <option>Travel</option>
-        <option>Tools</option>
-        <option>Other</option>
-      </select>
-      <input name="tags" placeholder="tags (comma)" value="${editing ? esc((editing.tags || []).join(", ")) : ""}">
-      <input name="notes" placeholder="notes" value="${editing ? esc(editing.notes || "") : ""}">
-      <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
-      ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
-    </form>
-    <div class="app-bar">
-      <input id="link-search" placeholder="Search…" value="${esc(links.q)}">
-      <select id="link-filter">
-        <option value="all" ${links.filter === "all" ? "selected" : ""}>All</option>
-        <option value="fav" ${links.filter === "fav" ? "selected" : ""}>⭐ Favorites</option>
-        ${LINK_CATS.map((c) => `<option value="${c}" ${links.filter === c ? "selected" : ""}>${c}</option>`).join("")}
-      </select>
-    </div>
-    <ul class="item-list">
-      ${filtered.length ? (() => {
-        // Group links by category
-        const grouped = {};
-        LINK_CATS.forEach(cat => {
-          grouped[cat] = [];
-        });
-        filtered.forEach(l => {
-          const cat = l.category || "Other";
-          if (grouped[cat]) {
-            grouped[cat].push(l);
-          }
-        });
-        
-        let html = "";
-        LINK_CATS.forEach(cat => {
-          const catLinks = grouped[cat];
-          if (catLinks.length === 0) return;
-          
-          const groupId = `links-${cat}`;
-          const isCollapsed = isGroupCollapsed(groupId);
-          
-          html += `<div class="group-header ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}" data-toggle="group-header">
-            ${esc(cat)} <span class="group-badge">${catLinks.length}</span>
-          </div>`;
-          
-          const itemsHtml = catLinks.map((l) => `
-            <li class="item">
-              <div class="item-main">
-                <span class="item-name">${l.favorite ? "⭐ " : ""}${esc(l.name)}</span>
-                <span class="muted">${esc(domainOf(l.url))}</span>
-                ${(l.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
-              </div>
-              <span class="row-actions">
-                <a class="ghost" href="${esc(l.url)}" target="_blank" rel="noopener">Open</a>
-                <button class="ghost" data-act="copy" data-id="${l.id}">Copy</button>
-                <button class="ghost" data-act="share" data-id="${l.id}">Share</button>
-                <button class="ghost" data-act="fav" data-id="${l.id}">${l.favorite ? "Unfav" : "Fav"}</button>
-                <button class="ghost" data-act="edit" data-id="${l.id}">Edit</button>
-                <button class="ghost danger" data-act="del" data-id="${l.id}">Del</button>
-              </span>
-            </li>`).join("");
-          
-          html += `<div class="group-content ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}">
-            ${itemsHtml}
-          </div>`;
-        });
-        
-        return html;
-      })() : '<li class="empty">No links yet.</li>'}
-    </ul>
-  `;
-  
+  const formContainer = document.getElementById("links-form-container");
+  const listContainer = document.getElementById("links-list-container");
+  const searchInput = document.getElementById("link-search");
+  const filterSelect = document.getElementById("link-filter");
+
+  if (formContainer) {
+    formContainer.innerHTML = `
+      <form id="link-form" class="item-form">
+        <input name="url" placeholder="https://…" value="${editing ? esc(editing.url) : ""}" required pattern="https?://.+" title="URL must start with http(s)://">
+        <input name="name" placeholder="Name" value="${editing ? esc(editing.name) : ""}" required>
+        <select name="category">
+          <option>Work</option>
+          <option>Shopping</option>
+          <option>Finance</option>
+          <option>Travel</option>
+          <option>Tools</option>
+          <option>Other</option>
+        </select>
+        <input name="tags" placeholder="tags (comma)" value="${editing ? esc((editing.tags || []).join(", ")) : ""}">
+        <input name="notes" placeholder="notes" value="${editing ? esc(editing.notes || "") : ""}">
+        <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
+        ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
+      </form>
+    `;
+  }
+
+  if (searchInput) searchInput.value = links.q;
+  if (filterSelect) filterSelect.value = links.filter;
+
+  if (listContainer) {
+    listContainer.innerHTML = `
+      <ul class="item-list">
+        ${filtered.length ? (() => {
+          const grouped = {};
+          LINK_CATS.forEach(cat => { grouped[cat] = []; });
+          filtered.forEach(l => {
+            const cat = l.category || "Other";
+            if (grouped[cat]) grouped[cat].push(l);
+          });
+          let html = "";
+          LINK_CATS.forEach(cat => {
+            const catLinks = grouped[cat];
+            if (catLinks.length === 0) return;
+            const groupId = `links-${cat}`;
+            const isCollapsed = isGroupCollapsed(groupId);
+            html += `<div class="group-header ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}" data-toggle="group-header">
+              ${esc(cat)} <span class="group-badge">${catLinks.length}</span>
+            </div>`;
+            const itemsHtml = catLinks.map((l) => `
+              <li class="item">
+                <div class="item-main">
+                  <span class="item-name">${l.favorite ? "⭐ " : ""}${esc(l.name)}</span>
+                  <span class="muted">${esc(domainOf(l.url))}</span>
+                  ${(l.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+                </div>
+                <span class="row-actions">
+                  <a class="ghost" href="${esc(l.url)}" target="_blank" rel="noopener">Open</a>
+                  <button class="ghost" data-act="copy" data-id="${l.id}">Copy</button>
+                  <button class="ghost" data-act="share" data-id="${l.id}">Share</button>
+                  <button class="ghost" data-act="fav" data-id="${l.id}">${l.favorite ? "Unfav" : "Fav"}</button>
+                  <button class="ghost" data-act="edit" data-id="${l.id}">Edit</button>
+                  <button class="ghost danger" data-act="del" data-id="${l.id}">Del</button>
+                </span>
+              </li>`).join("");
+            html += `<div class="group-content ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}">${itemsHtml}</div>`;
+          });
+          return html;
+        })() : '<li class="empty">No links yet.</li>'}
+      </ul>
+    `;
+  }
+
   const linksCount = document.getElementById("links-count");
   if (linksCount) linksCount.textContent = links.data.length;
 }
@@ -1399,8 +1392,11 @@ function initLinks() {
   linksLoad();
   if (links.inited) { renderLinks(); return; }
   links.inited = true;
-  const root = document.getElementById("links-app");
-  root.addEventListener("submit", (e) => {
+  const formContainer = document.getElementById("links-form-container");
+  const listContainer = document.getElementById("links-list-container");
+  const viewRoot = document.getElementById("view-links");
+
+  formContainer.addEventListener("submit", (e) => {
     if (e.target.id !== "link-form") return;
     e.preventDefault();
     const f = e.target;
@@ -1422,12 +1418,14 @@ function initLinks() {
     }
     linksSave(); renderLinks();
   });
-  root.addEventListener("click", async (e) => {
+
+  viewRoot.addEventListener("click", async (e) => {
     const btn = e.target.closest("[data-act]");
     if (!btn) return;
     const act = btn.dataset.act;
     const l = links.data.find((x) => x.id === btn.dataset.id);
-    if (!l) return;
+    if (!l && act !== "toggle-group") return;
+
     if (act === "copy") { try { await navigator.clipboard.writeText(l.url); btn.textContent = "Copied"; setTimeout(() => renderLinks(), 800); } catch (err) { alert(l.url); } }
     else if (act === "share") { if (navigator.share) { try { await navigator.share({ title: l.name, url: l.url }); } catch (err) {} } else { alert(l.url); } }
     else if (act === "fav") { l.favorite = !l.favorite; linksSave(); renderLinks(); }
@@ -1440,40 +1438,63 @@ function initLinks() {
       links.editingId = null;
       renderLinks();
     }
+    else if (act === "toggle-group") {
+      const groupId = btn.dataset.groupId;
+      const content = listContainer.querySelector(`[data-group-id="${groupId}"]`);
+      const header = btn.closest('.group-header');
+      if (content && header) {
+        const isCollapsed = header.classList.toggle("is-collapsed");
+        content.classList.toggle("is-collapsed", isCollapsed);
+      }
+    }
   });
-  root.addEventListener("input", (e) => {
-    if (e.target.id === "link-search") { links.q = e.target.value; renderLinks(); }
-  });
-  root.addEventListener("change", (e) => {
-    if (e.target.id === "link-filter") { links.filter = e.target.value; renderLinks(); }
-  });
-  
-  // Swipe-to-delete for links
-  root.addEventListener("touchstart", (e) => {
-    handleSwipeStart(e, ".item-list", ".item");
-  }, { passive: true });
-  
-  root.addEventListener("touchmove", (e) => {
-    handleSwipeMove(e, ".item-list", ".item");
-  }, { passive: true });
-  
-  root.addEventListener("touchend", (e) => {
-    handleSwipeEnd(e, ".item-list", ".item", (item) => {
-      const linkId = item.dataset.id;
-      links.data = links.data.filter((x) => x.id !== linkId);
-      linksSave();
-      item.classList.add("is-deleting");
-      setTimeout(() => renderLinks(), 300);
-      showToast("Link deleted", "info", 2000);
+
+  const searchInput = document.getElementById("link-search");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      clearTimeout(links.searchTimer);
+      links.searchTimer = setTimeout(() => {
+        links.q = e.target.value;
+        renderLinks();
+      }, 300);
     });
-  }, { passive: true });
-  
+  }
+
+  const filterSelect = document.getElementById("link-filter");
+  if (filterSelect) {
+    filterSelect.addEventListener("change", (e) => {
+      links.filter = e.target.value;
+      renderLinks();
+    });
+  }
+
   renderLinks();
+
+  if (listContainer) {
+    listContainer.addEventListener("touchstart", (e) => {
+      handleSwipeStart(e, ".item-list", ".item");
+    }, { passive: true });
+
+    listContainer.addEventListener("touchmove", (e) => {
+      handleSwipeMove(e, ".item-list", ".item");
+    }, { passive: true });
+
+    listContainer.addEventListener("touchend", (e) => {
+      handleSwipeEnd(e, ".item-list", ".item", (item) => {
+        const linkId = item.dataset.id;
+        links.data = links.data.filter((x) => x.id !== linkId);
+        linksSave();
+        item.classList.add("is-deleting");
+        setTimeout(() => renderLinks(), 300);
+        showToast("Link deleted", "info", 2000);
+      });
+    }, { passive: true });
+  }
 }
 
 const NOTES_KEY = "_myHandyHub.notes";
 const NOTE_COLORS = ["", "#fde8e3", "#e3f0fd", "#eafde3", "#f3e3fd"];
-const notes = { inited: false, data: null, favOnly: false, q: "", editingId: null };
+const notes = { inited: false, data: null, favOnly: false, q: "", editingId: null, searchTimer: null };
 
 function notesLoad() { if (!notes.data) notes.data = storeGet(NOTES_KEY, []); return notes.data; }
 function notesSave() { storeSet(NOTES_KEY, notes.data); }
@@ -1484,7 +1505,6 @@ function noteStyle(n) {
 
 function renderNotes() {
   notesLoad();
-  const root = document.getElementById("notes-app");
   const q = notes.q.toLowerCase();
   const filtered = notes.data.filter((n) => {
     if (notes.favOnly && !n.favorite) return false;
@@ -1494,95 +1514,94 @@ function renderNotes() {
 
   const editing = notes.editingId ? notes.data.find((n) => n.id === notes.editingId) : null;
 
-  root.innerHTML = `
-    <form id="note-form" class="item-form note-form">
-      <input name="title" class="note-title" placeholder="Title" value="${editing ? esc(editing.title) : ""}" required>
-      <textarea name="text" class="note-text" placeholder="Note…" rows="4">${editing ? esc(editing.text || "") : ""}</textarea>
-      <div class="note-row">
-        <select name="color">${NOTE_COLORS.map((c, i) => `<option value="${i}" ${(editing ? editing.color : 0) === i ? "selected" : ""}>${c ? "Color " + i : "Default"}</option>`).join("")}</select>
-        <input name="tags" placeholder="tags" value="${editing ? esc((editing.tags || []).join(", ")) : ""}">
-        <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
-        ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
-      </div>
-    </form>
-    <div class="app-bar">
-      <input id="note-search" placeholder="Search…" value="${esc(notes.q)}">
-      <button class="ghost" data-act="favonly">${notes.favOnly ? "All" : "Favorites"}</button>
-    </div>
-    <ul class="item-list">
-      ${filtered.length ? (() => {
-        // Separate pinned and unpinned notes
-        const pinned = filtered.filter(n => n.favorite);
-        const unpinned = filtered.filter(n => !n.favorite);
-        
-        // Group unpinned by month
-        const byMonth = {};
-        unpinned.forEach(n => {
-          const date = n.updated ? new Date(n.updated) : new Date();
-          const monthKey = date.toLocaleDateString("en-US", { year: "numeric", month: "long" });
-          if (!byMonth[monthKey]) byMonth[monthKey] = [];
-          byMonth[monthKey].push(n);
-        });
-        
-        let html = "";
-        
-        // Render pinned notes group
-        if (pinned.length > 0) {
-          const groupId = "notes-pinned";
-          html += `<div class="group-header" data-group-id="${groupId}">
-            📌 Pinned <span class="group-badge">${pinned.length}</span>
-          </div>`;
-          html += `<div class="group-content" data-group-id="${groupId}">
-            ${pinned.map((n) => `
-              <li class="item note" style="${noteStyle(n)}">
-                <div class="item-main">
-                  <span class="item-name">📌 ${esc(n.title)}</span>
-                  <span class="muted">${esc((n.text || "").slice(0, 80))}</span>
-                  ${(n.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
-                  <span class="muted tiny">${n.updated ? new Date(n.updated).toLocaleDateString() : ""}</span>
-                </div>
-                <span class="row-actions">
-                  <button class="ghost" data-act="fav" data-id="${n.id}">Unpin</button>
-                  <button class="ghost" data-act="edit" data-id="${n.id}">Edit</button>
-                  <button class="ghost danger" data-act="del" data-id="${n.id}">Del</button>
-                </span>
-              </li>`).join("")}
-          </div>`;
-        }
-        
-        // Render month groups
-        const monthOrder = Object.keys(byMonth).sort((a, b) => new Date(b) - new Date(a));
-        monthOrder.forEach(monthKey => {
-          const monthNotes = byMonth[monthKey];
-          const groupId = `notes-${monthKey}`;
-          const isCollapsed = isGroupCollapsed(groupId);
-          
-          html += `<div class="group-header ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}" data-toggle="group-header">
-            ${monthKey} <span class="group-badge">${monthNotes.length}</span>
-          </div>`;
-          html += `<div class="group-content ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}">
-            ${monthNotes.map((n) => `
-              <li class="item note" style="${noteStyle(n)}">
-                <div class="item-main">
-                  <span class="item-name">${esc(n.title)}</span>
-                  <span class="muted">${esc((n.text || "").slice(0, 80))}</span>
-                  ${(n.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
-                  <span class="muted tiny">${n.updated ? new Date(n.updated).toLocaleDateString() : ""}</span>
-                </div>
-                <span class="row-actions">
-                  <button class="ghost" data-act="fav" data-id="${n.id}">Pin</button>
-                  <button class="ghost" data-act="edit" data-id="${n.id}">Edit</button>
-                  <button class="ghost danger" data-act="del" data-id="${n.id}">Del</button>
-                </span>
-              </li>`).join("")}
-          </div>`;
-        });
-        
-        return html;
-      })() : '<li class="empty">No notes yet.</li>'}
-    </ul>
-  `;
-  
+  const formContainer = document.getElementById("notes-form-container");
+  const listContainer = document.getElementById("notes-list-container");
+  const searchInput = document.getElementById("note-search");
+
+  if (formContainer) {
+    formContainer.innerHTML = `
+      <form id="note-form" class="item-form note-form">
+        <input name="title" class="note-title" placeholder="Title" value="${editing ? esc(editing.title) : ""}" required>
+        <textarea name="text" class="note-text" placeholder="Note…" rows="4">${editing ? esc(editing.text || "") : ""}</textarea>
+        <div class="note-row">
+          <select name="color">${NOTE_COLORS.map((c, i) => `<option value="${i}" ${(editing ? editing.color : 0) === i ? "selected" : ""}>${c ? "Color " + i : "Default"}</option>`).join("")}</select>
+          <input name="tags" placeholder="tags" value="${editing ? esc((editing.tags || []).join(", ")) : ""}">
+          <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
+          ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
+        </div>
+      </form>
+    `;
+  }
+
+  if (searchInput) searchInput.value = notes.q;
+
+  if (listContainer) {
+    listContainer.innerHTML = `
+      <ul class="item-list">
+        ${filtered.length ? (() => {
+          const pinned = filtered.filter(n => n.favorite);
+          const unpinned = filtered.filter(n => !n.favorite);
+          const byMonth = {};
+          unpinned.forEach(n => {
+            const date = n.updated ? new Date(n.updated) : new Date();
+            const monthKey = date.toLocaleDateString("en-US", { year: "numeric", month: "long" });
+            if (!byMonth[monthKey]) byMonth[monthKey] = [];
+            byMonth[monthKey].push(n);
+          });
+          let html = "";
+          if (pinned.length > 0) {
+            const groupId = "notes-pinned";
+            html += `<div class="group-header" data-group-id="${groupId}">
+              📌 Pinned <span class="group-badge">${pinned.length}</span>
+            </div>`;
+            html += `<div class="group-content" data-group-id="${groupId}">
+              ${pinned.map((n) => `
+                <li class="item note" style="${noteStyle(n)}">
+                  <div class="item-main">
+                    <span class="item-name">📌 ${esc(n.title)}</span>
+                    <span class="muted">${esc((n.text || "").slice(0, 80))}</span>
+                    ${(n.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+                    <span class="muted tiny">${n.updated ? new Date(n.updated).toLocaleDateString() : ""}</span>
+                  </div>
+                  <span class="row-actions">
+                    <button class="ghost" data-act="fav" data-id="${n.id}">Unpin</button>
+                    <button class="ghost" data-act="edit" data-id="${n.id}">Edit</button>
+                    <button class="ghost danger" data-act="del" data-id="${n.id}">Del</button>
+                  </span>
+                </li>`).join("")}
+            </div>`;
+          }
+          const monthOrder = Object.keys(byMonth).sort((a, b) => new Date(b) - new Date(a));
+          monthOrder.forEach(monthKey => {
+            const monthNotes = byMonth[monthKey];
+            const groupId = `notes-${monthKey}`;
+            const isCollapsed = isGroupCollapsed(groupId);
+            html += `<div class="group-header ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}" data-toggle="group-header">
+              ${monthKey} <span class="group-badge">${monthNotes.length}</span>
+            </div>`;
+            html += `<div class="group-content ${isCollapsed ? "is-collapsed" : ""}" data-group-id="${groupId}">
+              ${monthNotes.map((n) => `
+                <li class="item note" style="${noteStyle(n)}">
+                  <div class="item-main">
+                    <span class="item-name">${esc(n.title)}</span>
+                    <span class="muted">${esc((n.text || "").slice(0, 80))}</span>
+                    ${(n.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+                    <span class="muted tiny">${n.updated ? new Date(n.updated).toLocaleDateString() : ""}</span>
+                  </div>
+                  <span class="row-actions">
+                    <button class="ghost" data-act="fav" data-id="${n.id}">Pin</button>
+                    <button class="ghost" data-act="edit" data-id="${n.id}">Edit</button>
+                    <button class="ghost danger" data-act="del" data-id="${n.id}">Del</button>
+                  </span>
+                </li>`).join("")}
+            </div>`;
+          });
+          return html;
+        })() : '<li class="empty">No notes yet.</li>'}
+      </ul>
+    `;
+  }
+
   const notesCount = document.getElementById("notes-count");
   if (notesCount) notesCount.textContent = notes.data.length;
 }
@@ -1591,8 +1610,11 @@ function initNotes() {
   notesLoad();
   if (notes.inited) { renderNotes(); return; }
   notes.inited = true;
-  const root = document.getElementById("notes-app");
-  root.addEventListener("submit", (e) => {
+  const formContainer = document.getElementById("notes-form-container");
+  const listContainer = document.getElementById("notes-list-container");
+  const viewRoot = document.getElementById("view-notes");
+
+  formContainer.addEventListener("submit", (e) => {
     if (e.target.id !== "note-form") return;
     e.preventDefault();
     const f = e.target;
@@ -1612,7 +1634,8 @@ function initNotes() {
     }
     notesSave(); renderNotes();
   });
-  root.addEventListener("click", (e) => {
+
+  viewRoot.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-act]");
     if (!btn) return;
     const act = btn.dataset.act;
@@ -1631,30 +1654,38 @@ function initNotes() {
     }
   });
 
-  root.addEventListener("input", (e) => {
-    if (e.target.id === "note-search") { notes.q = e.target.value; renderNotes(); }
-  });
-  
-  // Swipe-to-delete for notes
-  root.addEventListener("touchstart", (e) => {
-    handleSwipeStart(e, ".item-list", ".item");
-  }, { passive: true });
-  
-  root.addEventListener("touchmove", (e) => {
-    handleSwipeMove(e, ".item-list", ".item");
-  }, { passive: true });
-  
-  root.addEventListener("touchend", (e) => {
-    handleSwipeEnd(e, ".item-list", ".item", (item) => {
-      const noteId = item.dataset.id;
-      notes.data = notes.data.filter((x) => x.id !== noteId);
-      notesSave();
-      item.classList.add("is-deleting");
-      setTimeout(() => renderNotes(), 300);
-      showToast("Note deleted", "info", 2000);
+  const searchInput = document.getElementById("note-search");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      clearTimeout(notes.searchTimer);
+      notes.searchTimer = setTimeout(() => {
+        notes.q = e.target.value;
+        renderNotes();
+      }, 300);
     });
-  }, { passive: true });
-  
+  }
+
+  if (listContainer) {
+    listContainer.addEventListener("touchstart", (e) => {
+      handleSwipeStart(e, ".item-list", ".item");
+    }, { passive: true });
+
+    listContainer.addEventListener("touchmove", (e) => {
+      handleSwipeMove(e, ".item-list", ".item");
+    }, { passive: true });
+
+    listContainer.addEventListener("touchend", (e) => {
+      handleSwipeEnd(e, ".item-list", ".item", (item) => {
+        const noteId = item.dataset.id;
+        notes.data = notes.data.filter((x) => x.id !== noteId);
+        notesSave();
+        item.classList.add("is-deleting");
+        setTimeout(() => renderNotes(), 300);
+        showToast("Note deleted", "info", 2000);
+      });
+    }, { passive: true });
+  }
+
   renderNotes();
 }
 

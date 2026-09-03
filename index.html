@@ -146,7 +146,13 @@
       <div class="app-controls">
         <button class="backup-button" id="links-export" type="button">Export</button>
       </div>
-      <div id="links-app"></div>
+      <div id="links-app">
+        <div class="app-bar">
+          <input id="link-search" placeholder="Search…">
+        </div>
+        <div id="links-form-container"></div>
+        <div id="links-list-container"></div>
+      </div>
     </section>
 
     <section class="view is-hidden" id="view-notes" role="tabpanel" aria-labelledby="notes-title">
@@ -159,7 +165,13 @@
       <div class="app-controls">
         <button class="backup-button" id="notes-export" type="button">Export</button>
       </div>
-      <div id="notes-app"></div>
+      <div id="notes-app">
+        <div class="app-bar">
+          <input id="note-search" placeholder="Search…">
+        </div>
+        <div id="notes-form-container"></div>
+        <div id="notes-list-container"></div>
+      </div>
     </section>
 
     <section class="view is-hidden" id="view-passwords" role="tabpanel" aria-labelledby="passwords-title">
