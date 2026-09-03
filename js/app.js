@@ -131,49 +131,6 @@ initGroupCollapse();
 
 // ============================================================
 
-// Swipe-to-Delete Handler
-let swipeStartX = 0;
-let swipeStartY = 0;
-let swipeElement = null;
-let isSwipingDelete = false;
-
-function handleSwipeStart(e, listSelector, itemSelector) {
-  const touch = e.touches?.[0];
-  if (!touch) return;
-  swipeStartX = touch.clientX;
-  swipeStartY = touch.clientY;
-  swipeElement = e.target.closest(itemSelector);
-  isSwipingDelete = false;
-}
-
-function handleSwipeMove(e, listSelector, itemSelector) {
-  if (!swipeElement || !e.touches) return;
-  const touch = e.touches[0];
-  const deltaX = touch.clientX - swipeStartX;
-  const deltaY = touch.clientY - swipeStartY;
-  
-  if (Math.abs(deltaY) > Math.abs(deltaX)) return; // Vertical scroll
-  
-  if (deltaX < -30) {
-    isSwipingDelete = true;
-    swipeElement.classList.add("is-swiping");
-  } else {
-    swipeElement.classList.remove("is-swiping");
-  }
-}
-
-function handleSwipeEnd(e, listSelector, itemSelector, deleteHandler) {
-  if (!swipeElement) return;
-  swipeElement.classList.remove("is-swiping");
-  
-  if (isSwipingDelete) {
-    deleteHandler(swipeElement);
-  }
-  
-  swipeElement = null;
-  isSwipingDelete = false;
-}
-
 // Animation completion handler
 function animateItemCompletion(item, onAnimationComplete) {
   item.classList.add("is-completed");
@@ -723,26 +680,6 @@ function getDragAfterElement(container, y) {
   return closest;
 }
 
-// Swipe-to-delete for todo items
-list.addEventListener("touchstart", (e) => {
-  handleSwipeStart(e, ".todo-list", ".todo-item");
-}, { passive: true });
-
-list.addEventListener("touchmove", (e) => {
-  handleSwipeMove(e, ".todo-list", ".todo-item");
-}, { passive: true });
-
-list.addEventListener("touchend", (e) => {
-  handleSwipeEnd(e, ".todo-list", ".todo-item", (item) => {
-    const todoId = item.dataset.id;
-    todos = todos.filter((todo) => todo.id !== todoId);
-    saveTodos();
-    item.classList.add("is-deleting");
-    setTimeout(() => render(), 300);
-    showToast("Todo deleted", "info", 2000);
-  });
-}, { passive: true });
-
 function showStatus(message, type) {
   if (!statusMessage) return;
   statusMessage.textContent = message;
@@ -1268,27 +1205,6 @@ function initShopping() {
     }
   });
   
-  // Swipe-to-delete for shopping items
-  root.addEventListener("touchstart", (e) => {
-    handleSwipeStart(e, ".item-list", ".item");
-  }, { passive: true });
-  
-  root.addEventListener("touchmove", (e) => {
-    handleSwipeMove(e, ".item-list", ".item");
-  }, { passive: true });
-  
-  root.addEventListener("touchend", (e) => {
-    handleSwipeEnd(e, ".item-list", ".item", (item) => {
-      const list = shopActive();
-      const itemId = item.dataset.id;
-      list.items = list.items.filter((i) => i.id !== itemId);
-      shopSave();
-      item.classList.add("is-deleting");
-      setTimeout(() => renderShopping(), 300);
-      showToast("Item deleted", "info", 2000);
-    });
-  }, { passive: true });
-  
   renderShopping();
 }
 
@@ -1317,6 +1233,9 @@ function renderLinks() {
   const searchInput = document.getElementById("link-search");
   const filterSelect = document.getElementById("link-filter");
 
+  const wasFocused = searchInput === document.activeElement;
+  const cursorPos = wasFocused ? searchInput.selectionStart : 0;
+
   if (formContainer) {
     formContainer.innerHTML = `
       <form id="link-form" class="item-form">
@@ -1335,11 +1254,24 @@ function renderLinks() {
         <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
         ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
       </form>
+      <div class="app-bar">
+        <input id="link-search" placeholder="Search…" value="${esc(links.q)}">
+        <select id="link-filter">
+          <option value="all" ${links.filter === "all" ? "selected" : ""}>All</option>
+          <option value="fav" ${links.filter === "fav" ? "selected" : ""}>⭐ Favorites</option>
+          ${LINK_CATS.map((c) => `<option value="${c}" ${links.filter === c ? "selected" : ""}>${c}</option>`).join("")}
+        </select>
+      </div>
     `;
   }
 
-  if (searchInput) searchInput.value = links.q;
-  if (filterSelect) filterSelect.value = links.filter;
+  if (wasFocused) {
+    const newSearch = document.getElementById("link-search");
+    if (newSearch) {
+      newSearch.focus();
+      newSearch.setSelectionRange(cursorPos, cursorPos);
+    }
+  }
 
   if (listContainer) {
     listContainer.innerHTML = `
@@ -1449,47 +1381,24 @@ function initLinks() {
     }
   });
 
-  const searchInput = document.getElementById("link-search");
-  if (searchInput) {
-    searchInput.addEventListener("input", (e) => {
+  viewRoot.addEventListener("input", (e) => {
+    if (e.target.id === "link-search") {
       clearTimeout(links.searchTimer);
       links.searchTimer = setTimeout(() => {
         links.q = e.target.value;
         renderLinks();
       }, 300);
-    });
-  }
+    }
+  });
 
-  const filterSelect = document.getElementById("link-filter");
-  if (filterSelect) {
-    filterSelect.addEventListener("change", (e) => {
+  viewRoot.addEventListener("change", (e) => {
+    if (e.target.id === "link-filter") {
       links.filter = e.target.value;
       renderLinks();
-    });
-  }
+    }
+  });
 
   renderLinks();
-
-  if (listContainer) {
-    listContainer.addEventListener("touchstart", (e) => {
-      handleSwipeStart(e, ".item-list", ".item");
-    }, { passive: true });
-
-    listContainer.addEventListener("touchmove", (e) => {
-      handleSwipeMove(e, ".item-list", ".item");
-    }, { passive: true });
-
-    listContainer.addEventListener("touchend", (e) => {
-      handleSwipeEnd(e, ".item-list", ".item", (item) => {
-        const linkId = item.dataset.id;
-        links.data = links.data.filter((x) => x.id !== linkId);
-        linksSave();
-        item.classList.add("is-deleting");
-        setTimeout(() => renderLinks(), 300);
-        showToast("Link deleted", "info", 2000);
-      });
-    }, { passive: true });
-  }
 }
 
 const NOTES_KEY = "_myHandyHub.notes";
@@ -1518,6 +1427,9 @@ function renderNotes() {
   const listContainer = document.getElementById("notes-list-container");
   const searchInput = document.getElementById("note-search");
 
+  const wasFocused = searchInput === document.activeElement;
+  const cursorPos = wasFocused ? searchInput.selectionStart : 0;
+
   if (formContainer) {
     formContainer.innerHTML = `
       <form id="note-form" class="item-form note-form">
@@ -1530,10 +1442,20 @@ function renderNotes() {
           ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
         </div>
       </form>
+      <div class="app-bar">
+        <input id="note-search" placeholder="Search…" value="${esc(notes.q)}">
+        <button class="ghost" data-act="favonly">${notes.favOnly ? "All" : "Favorites"}</button>
+      </div>
     `;
   }
 
-  if (searchInput) searchInput.value = notes.q;
+  if (wasFocused) {
+    const newSearch = document.getElementById("note-search");
+    if (newSearch) {
+      newSearch.focus();
+      newSearch.setSelectionRange(cursorPos, cursorPos);
+    }
+  }
 
   if (listContainer) {
     listContainer.innerHTML = `
@@ -1654,37 +1576,15 @@ function initNotes() {
     }
   });
 
-  const searchInput = document.getElementById("note-search");
-  if (searchInput) {
-    searchInput.addEventListener("input", (e) => {
+  viewRoot.addEventListener("input", (e) => {
+    if (e.target.id === "note-search") {
       clearTimeout(notes.searchTimer);
       notes.searchTimer = setTimeout(() => {
         notes.q = e.target.value;
         renderNotes();
       }, 300);
-    });
-  }
-
-  if (listContainer) {
-    listContainer.addEventListener("touchstart", (e) => {
-      handleSwipeStart(e, ".item-list", ".item");
-    }, { passive: true });
-
-    listContainer.addEventListener("touchmove", (e) => {
-      handleSwipeMove(e, ".item-list", ".item");
-    }, { passive: true });
-
-    listContainer.addEventListener("touchend", (e) => {
-      handleSwipeEnd(e, ".item-list", ".item", (item) => {
-        const noteId = item.dataset.id;
-        notes.data = notes.data.filter((x) => x.id !== noteId);
-        notesSave();
-        item.classList.add("is-deleting");
-        setTimeout(() => renderNotes(), 300);
-        showToast("Note deleted", "info", 2000);
-      });
-    }, { passive: true });
-  }
+    }
+  });
 
   renderNotes();
 }

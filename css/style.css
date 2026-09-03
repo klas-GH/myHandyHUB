@@ -1264,14 +1264,6 @@ button:disabled { cursor: default; opacity: 0.5; }
   100% { transform: translateX(100%); opacity: 0; }
 }
 
-.todo-item.is-deleting {
-  animation: slideOut 300ms ease-out forwards;
-}
-
-.item.is-deleting {
-  animation: slideOut 300ms ease-out forwards;
-}
-
 /* Sticky Header with hide-on-scroll */
 .site-header {
   position: sticky;
@@ -1381,12 +1373,6 @@ button:disabled { cursor: default; opacity: 0.5; }
 
 .toast.is-info::before {
   background: var(--accent-strong);
-}
-
-/* Swipe indicator */
-.todo-item.is-swiping,
-.item.is-swiping {
-  background: var(--accent-ring);
 }
 
 /* Group Headers & Collapsible Sections */
