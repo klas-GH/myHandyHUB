@@ -48,6 +48,7 @@
       <button class="tab" type="button" role="tab" data-app="links" aria-selected="false"><span aria-hidden="true">🔗</span></button>
       <button class="tab" type="button" role="tab" data-app="notes" aria-selected="false"><span aria-hidden="true">📝</span></button>
       <button class="tab" type="button" role="tab" data-app="passwords" aria-selected="false"><span aria-hidden="true">🔐</span></button>
+      <button class="tab" type="button" role="tab" data-app="inventory" aria-selected="false"><span aria-hidden="true">📦</span></button>
     </nav>
     <section class="view todo-app" id="view-todos" aria-labelledby="todo-title" role="tabpanel">
       <h2 id="todo-title">ToDos</h2>
@@ -182,6 +183,16 @@
           <p id="vault-error" class="muted" style="color:var(--priority-high)"></p>
         </div>
       </div>
+    </section>
+
+    <section class="view is-hidden" id="view-inventory" role="tabpanel" aria-labelledby="inventory-title">
+      <div class="app-head">
+        <h2 id="inventory-title">Inventory</h2>
+        <div class="app-stats" aria-live="polite">
+          <span><strong id="inventory-count">0</strong> items</span>
+        </div>
+      </div>
+      <div id="inventory-app"></div>
     </section>
   </main>
 

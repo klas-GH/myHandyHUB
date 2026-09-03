@@ -979,6 +979,7 @@ const APP_VIEWS = {
   links: { panel: "view-links", init: initLinks },
   notes: { panel: "view-notes", init: initNotes },
   passwords: { panel: "view-passwords", init: initPasswords },
+  inventory: { panel: "view-inventory", init: initInventory },
 };
 
 function initTodos() {}
@@ -1997,6 +1998,104 @@ function initPasswords() {
   });
 
   renderPasswords();
+}
+
+const INVENTORY_KEY = "myHandyHub.inventory";
+const inventory = { inited: false, data: null, q: "", editingId: null };
+
+function inventoryLoad() { if (!inventory.data) inventory.data = storeGet(INVENTORY_KEY, []); return inventory.data; }
+function inventorySave() { storeSet(INVENTORY_KEY, inventory.data); }
+
+function renderInventory() {
+  inventoryLoad();
+  const root = document.getElementById("inventory-app");
+  const q = inventory.q.toLowerCase();
+  const filtered = inventory.data.filter((item) => {
+    if (q && !(`${item.name} ${item.quantity} ${item.location} ${item.notes}`.toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a, b) => a.name.localeCompare(b.name));
+
+  const editing = inventory.editingId ? filtered.find((item) => item.id === inventory.editingId) : null;
+
+  root.innerHTML = `
+    <form id="inventory-form" class="item-form">
+      <input name="name" placeholder="Item name" value="${editing ? esc(editing.name) : ""}" required>
+      <input name="quantity" placeholder="Quantity" value="${editing ? esc(editing.quantity) : ""}">
+      <input name="location" placeholder="Location" value="${editing ? esc(editing.location) : ""}">
+      <input name="notes" placeholder="Notes" value="${editing ? esc(editing.notes || "") : ""}">
+      <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
+      ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
+    </form>
+    <div class="app-bar">
+      <input id="inventory-search" placeholder="Search…" value="${esc(inventory.q)}">
+    </div>
+    <ul class="item-list">
+      ${filtered.length ? filtered.map((item) => `
+        <li class="item" data-id="${item.id}">
+          <div class="item-main">
+            <span class="item-name">${esc(item.name)}</span>
+            <span class="muted">Qty: ${esc(item.quantity)}</span>
+            <span class="muted">Loc: ${esc(item.location)}</span>
+            ${item.notes ? `<span class="muted">${esc(item.notes)}</span>` : ""}
+          </div>
+          <span class="row-actions">
+            <button class="ghost" data-act="edit" data-id="${item.id}">Edit</button>
+            <button class="ghost danger" data-act="del" data-id="${item.id}">Del</button>
+          </span>
+        </li>`).join("") : '<li class="empty">No items yet. Add one above.</li>'}
+    </ul>
+  `;
+}
+
+function initInventory() {
+  inventoryLoad();
+  if (inventory.inited) { renderInventory(); return; }
+  inventory.inited = true;
+  const root = document.getElementById("inventory-app");
+
+  root.addEventListener("submit", (e) => {
+    if (e.target.id !== "inventory-form") return;
+    e.preventDefault();
+    const f = e.target;
+    if (inventory.editingId) {
+      const item = inventory.data.find((x) => x.id === inventory.editingId);
+      if (item) {
+        item.name = f.name.value.trim();
+        item.quantity = f.quantity.value.trim();
+        item.location = f.location.value.trim();
+        item.notes = f.notes.value.trim();
+      }
+      inventory.editingId = null;
+    } else {
+      inventory.data.push({ id: uid(), name: f.name.value.trim(), quantity: f.quantity.value.trim(), location: f.location.value.trim(), notes: f.notes.value.trim(), created: new Date().toISOString() });
+    }
+    inventorySave(); renderInventory();
+  });
+
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    const act = btn.dataset.act;
+    const item = inventory.data.find((x) => x.id === btn.dataset.id);
+    if (!item && act !== "cancel-edit") return;
+
+    if (act === "edit") {
+      inventory.editingId = item.id;
+      renderInventory();
+    } else if (act === "del") {
+      inventory.data = inventory.data.filter((x) => x.id !== item.id);
+      inventorySave(); renderInventory();
+    } else if (act === "cancel-edit") {
+      inventory.editingId = null;
+      renderInventory();
+    }
+  });
+
+  root.addEventListener("input", (e) => {
+    if (e.target.id === "inventory-search") { inventory.q = e.target.value; renderInventory(); }
+  });
+
+  renderInventory();
 }
 
 // Register the service worker only when the browser supports offline caching.

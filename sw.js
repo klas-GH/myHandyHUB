@@ -1,4 +1,4 @@
-const CACHE_NAME = "_myTodoHUB-v31";
+const CACHE_NAME = "_myTodoHUB-v32";
 const APP_SHELL = [
   "./",
   "./index.html",
