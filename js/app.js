@@ -2001,14 +2001,13 @@ function initPasswords() {
 }
 
 const INVENTORY_KEY = "myHandyHub.inventory";
-const inventory = { inited: false, data: null, q: "", editingId: null };
+const inventory = { inited: false, data: null, q: "", editingId: null, searchTimer: null };
 
 function inventoryLoad() { if (!inventory.data) inventory.data = storeGet(INVENTORY_KEY, []); return inventory.data; }
 function inventorySave() { storeSet(INVENTORY_KEY, inventory.data); }
 
 function renderInventory() {
   inventoryLoad();
-  const root = document.getElementById("inventory-app");
   const q = inventory.q.toLowerCase();
   const filtered = inventory.data.filter((item) => {
     if (q && !(`${item.name} ${item.quantity} ${item.location} ${item.notes}`.toLowerCase().includes(q))) return false;
@@ -2017,43 +2016,56 @@ function renderInventory() {
 
   const editing = inventory.editingId ? filtered.find((item) => item.id === inventory.editingId) : null;
 
-  root.innerHTML = `
-    <form id="inventory-form" class="item-form">
-      <input name="name" placeholder="Item name" value="${editing ? esc(editing.name) : ""}" required>
-      <input name="quantity" placeholder="Quantity" value="${editing ? esc(editing.quantity) : ""}">
-      <input name="location" placeholder="Location" value="${editing ? esc(editing.location) : ""}">
-      <input name="notes" placeholder="Notes" value="${editing ? esc(editing.notes || "") : ""}">
-      <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
-      ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
-    </form>
-    <div class="app-bar">
-      <input id="inventory-search" placeholder="Search…" value="${esc(inventory.q)}">
-    </div>
-    <ul class="item-list">
-      ${filtered.length ? filtered.map((item) => `
-        <li class="item" data-id="${item.id}">
-          <div class="item-main">
-            <span class="item-name">${esc(item.name)}</span>
-            <span class="muted">Qty: ${esc(item.quantity)}</span>
-            <span class="muted">Loc: ${esc(item.location)}</span>
-            ${item.notes ? `<span class="muted">${esc(item.notes)}</span>` : ""}
-          </div>
-          <span class="row-actions">
-            <button class="ghost" data-act="edit" data-id="${item.id}">Edit</button>
-            <button class="ghost danger" data-act="del" data-id="${item.id}">Del</button>
-          </span>
-        </li>`).join("") : '<li class="empty">No items yet. Add one above.</li>'}
-    </ul>
-  `;
+  const formRoot = document.getElementById("inventory-app");
+  const listRoot = document.getElementById("inventory-list");
+  const searchInput = document.getElementById("inventory-search");
+
+  if (formRoot) {
+    formRoot.innerHTML = `
+      <form id="inventory-form" class="item-form">
+        <input name="name" placeholder="Item name" value="${editing ? esc(editing.name) : ""}" required>
+        <input name="quantity" placeholder="Quantity" value="${editing ? esc(editing.quantity) : ""}">
+        <input name="location" placeholder="Location" value="${editing ? esc(editing.location) : ""}">
+        <input name="notes" placeholder="Notes" value="${editing ? esc(editing.notes || "") : ""}">
+        <button type="submit" class="add-button">${editing ? "Save" : "Add"}</button>
+        ${editing ? '<button type="button" class="ghost" data-act="cancel-edit">Cancel</button>' : ""}
+      </form>
+    `;
+  }
+
+  if (searchInput) {
+    searchInput.value = inventory.q;
+  }
+
+  if (listRoot) {
+    listRoot.innerHTML = `
+      <ul class="item-list">
+        ${filtered.length ? filtered.map((item) => `
+          <li class="item" data-id="${item.id}">
+            <div class="item-main">
+              <span class="item-name">${esc(item.name)}</span>
+              <span class="muted">Qty: ${esc(item.quantity)}</span>
+              <span class="muted">Loc: ${esc(item.location)}</span>
+              ${item.notes ? `<span class="muted">${esc(item.notes)}</span>` : ""}
+            </div>
+            <span class="row-actions">
+              <button class="ghost" data-act="edit" data-id="${item.id}">Edit</button>
+              <button class="ghost danger" data-act="del" data-id="${item.id}">Del</button>
+            </span>
+          </li>`).join("") : '<li class="empty">No items yet. Add one above.</li>'}
+      </ul>
+    `;
+  }
 }
 
 function initInventory() {
   inventoryLoad();
   if (inventory.inited) { renderInventory(); return; }
   inventory.inited = true;
-  const root = document.getElementById("inventory-app");
+  const formRoot = document.getElementById("inventory-app");
+  const viewRoot = document.getElementById("view-inventory");
 
-  root.addEventListener("submit", (e) => {
+  formRoot.addEventListener("submit", (e) => {
     if (e.target.id !== "inventory-form") return;
     e.preventDefault();
     const f = e.target;
@@ -2072,7 +2084,7 @@ function initInventory() {
     inventorySave(); renderInventory();
   });
 
-  root.addEventListener("click", (e) => {
+  viewRoot.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-act]");
     if (!btn) return;
     const act = btn.dataset.act;
@@ -2091,9 +2103,16 @@ function initInventory() {
     }
   });
 
-  root.addEventListener("input", (e) => {
-    if (e.target.id === "inventory-search") { inventory.q = e.target.value; renderInventory(); }
-  });
+  const searchInput = document.getElementById("inventory-search");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      clearTimeout(inventory.searchTimer);
+      inventory.searchTimer = setTimeout(() => {
+        inventory.q = e.target.value;
+        renderInventory();
+      }, 300);
+    });
+  }
 
   renderInventory();
 }
