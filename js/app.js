@@ -2016,12 +2016,12 @@ function renderInventory() {
 
   const editing = inventory.editingId ? filtered.find((item) => item.id === inventory.editingId) : null;
 
-  const formRoot = document.getElementById("inventory-app");
-  const listRoot = document.getElementById("inventory-list");
+  const formContainer = document.getElementById("inventory-form-container");
+  const listContainer = document.getElementById("inventory-list-container");
   const searchInput = document.getElementById("inventory-search");
 
-  if (formRoot) {
-    formRoot.innerHTML = `
+  if (formContainer) {
+    formContainer.innerHTML = `
       <form id="inventory-form" class="item-form">
         <input name="name" placeholder="Item name" value="${editing ? esc(editing.name) : ""}" required>
         <input name="quantity" placeholder="Quantity" value="${editing ? esc(editing.quantity) : ""}">
@@ -2033,12 +2033,8 @@ function renderInventory() {
     `;
   }
 
-  if (searchInput) {
-    searchInput.value = inventory.q;
-  }
-
-  if (listRoot) {
-    listRoot.innerHTML = `
+  if (listContainer) {
+    listContainer.innerHTML = `
       <ul class="item-list">
         ${filtered.length ? filtered.map((item) => `
           <li class="item" data-id="${item.id}">
@@ -2062,10 +2058,11 @@ function initInventory() {
   inventoryLoad();
   if (inventory.inited) { renderInventory(); return; }
   inventory.inited = true;
-  const formRoot = document.getElementById("inventory-app");
+  const formContainer = document.getElementById("inventory-form-container");
+  const listContainer = document.getElementById("inventory-list-container");
   const viewRoot = document.getElementById("view-inventory");
 
-  formRoot.addEventListener("submit", (e) => {
+  formContainer.addEventListener("submit", (e) => {
     if (e.target.id !== "inventory-form") return;
     e.preventDefault();
     const f = e.target;
